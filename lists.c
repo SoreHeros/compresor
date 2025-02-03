@@ -108,6 +108,10 @@ int list_search(list l, void * element, int (* comparator)(const void *, const v
 }
 
 int list_bsearch(list l, void * element, int (* comparator)(const void *, const void *)){
+
+    if (l->list_len == 0)
+        return -1;
+
     int inf = 0, sup = l->list_len;
     while(inf < sup){
         int middle = (inf + sup) / 2, ret;
@@ -119,7 +123,7 @@ int list_bsearch(list l, void * element, int (* comparator)(const void *, const 
             inf = middle + 1;
     }
 
-    if(!(comparator(element, l->data[inf])))
+    if(inf < l->list_len && !(comparator(element, l->data[inf])))
         return inf;
     return -1;
 }
