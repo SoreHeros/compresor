@@ -13,8 +13,8 @@
 
 typedef struct{
     int count;
-    unsigned char transpose[12];
-    unsigned char * original;
+    char transpose[12];
+    char * original;
 }dictEntry;
 
 #define BANNED " \n\t{}[]()<=>+-*/%;.,\"\'\\&!^~|?"
@@ -32,25 +32,25 @@ int isBanned(unsigned char c){
 }
 
 int dict_original_compare(const void * a, const void * b){
-    dictEntry * d1 = a, * d2 = b;
+    const dictEntry * d1 = a, * d2 = b;
 
-    return strcmp((const char *)d1->original, (const char *)d2->original);
+    return strcmp(d1->original, d2->original);
 }
 
 int dict_count_compare(const void * a, const void * b){
-    dictEntry * d1 = a, * d2 = b;
+    const dictEntry * d1 = a, * d2 = b;
 
     return d1->count - d2->count;
 }
 
 int transposeLen;
 
-int potential(dictEntry * d){
+int potential(const dictEntry * d){
     return d->count * (strlen(d->original) - transposeLen) - 2 - strlen(d->original);
 }
 
 int dict_potential_compare(const void * a, const void * b){
-    dictEntry * d1 = a, * d2 = b;
+    const dictEntry * d1 = a, * d2 = b;
 
     return potential(d1) - potential(d2);
 }
@@ -72,7 +72,7 @@ void dict_comp(FILE * source, FILE * dest){
     fseek(source, 0, SEEK_SET);
 
 
-    unsigned char * s = NULL;
+    char * s = NULL;
     int len = 0;
     int c = fgetc(source);
     list dict = list_init();
