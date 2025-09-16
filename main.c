@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "dictionary.h"
+#include "rl-encoding.h"
 #include "lists.h"
 
 struct{
@@ -16,7 +17,8 @@ struct{
     void (*compress)(FILE *, FILE *);
     void (*decompress)(FILE *, FILE *);
 }algorithms[] = {
-        {"dictionary", ".dict", dict_comp, dict_decomp}
+        {"dictionary", ".dict", dict_comp, dict_decomp},
+        {"Run length", ".rl", rl_compress, rl_decomp}
     };
 
 
