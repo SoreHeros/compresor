@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-void rl_compress(FILE * source, FILE * dest);
+void rl_comp(FILE * source, FILE * dest);
 void rl_decomp(FILE * source, FILE * dest);
 
 #endif //RL_ENCODING_H

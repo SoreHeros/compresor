@@ -71,7 +71,6 @@ void nextComb(char arr[12]){
 void dict_comp(FILE * source, FILE * dest){
     fseek(source, 0, SEEK_SET);
 
-
     char * s = NULL;
     int len = 0;
     int c = fgetc(source);
@@ -126,6 +125,7 @@ void dict_comp(FILE * source, FILE * dest){
             dictEntry * new = malloc(sizeof(dictEntry));
             new->count = 1;
             new->original = s;
+            new->transpose[0] = '\0';
             s = NULL;
             list_ordered_insert(dict, new, dict_original_compare);
         }else{
@@ -236,6 +236,13 @@ void dict_comp(FILE * source, FILE * dest){
         free(s);
         s = NULL;
     }
+    while(list_length(dict)){
+        dictEntry * d = list_pop(dict);
+        free(d->original);
+        free(d);
+    }
+    list_free(dict);
+    list_free(finalDict);
 }
 
 void dict_decomp(FILE * source, FILE * dest){

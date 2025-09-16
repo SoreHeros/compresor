@@ -8,7 +8,7 @@
 #include <time.h>
 
 #include "dictionary.h"
-#include "rl-encoding.h"
+#include "rl_encoding.h"
 #include "lists.h"
 
 struct{
@@ -18,7 +18,7 @@ struct{
     void (*decompress)(FILE *, FILE *);
 }algorithms[] = {
         {"dictionary", ".dict", dict_comp, dict_decomp},
-        {"Run length", ".rl", rl_compress, rl_decomp}
+        {"Run length", ".rl", rl_comp, rl_decomp}
     };
 
 
@@ -32,6 +32,9 @@ int main(){
 
     long input_size = ftell(f), output_size = ftell(out);
     printf("dictionary:\n Original size: %10li\nResulting size: %10li\nResulting comp: %10.3lf%%\n", input_size, output_size, output_size*100.0/input_size);
+
+    fclose(f);
+    fclose(out);
 
     return 0;
 }

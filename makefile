@@ -5,19 +5,18 @@ CFLAGS = -Wall -Wextra
 OBJS = $(patsubst %.h, %.o, $(wildcard *.h))
 
 $(result): $(main) $(OBJS)
-	$(CC) $(CFLAGS) -o $(result) $(main) $(OBJS)
+	$(CC) $(CFLAGS) -g -o $(result) $(main) $(OBJS)
 
 #compilar todos los objetos
 %.o: %.c %.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -g -o $@ $<
 
-.PHONY: clean run leak
-
-run: $(result)
-	./$(result)
+.PHONY: clean leak
 
 leak: $(result)
 	valgrind --leak-check=full --show-leak-kinds=all ./$(result)
 
+all: $(result)
+
 clean:
-	rm $(result) $(OBJS) *.temp
+	rm $(result) *.o *.temp
