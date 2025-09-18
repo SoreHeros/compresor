@@ -8,7 +8,7 @@
 #include <time.h>
 
 #include "dictionary.h"
-#include "rl_encoding.h"
+#include "huffman.h"
 #include "lists.h"
 
 struct{
@@ -18,23 +18,70 @@ struct{
     void (*decompress)(FILE *, FILE *);
 }algorithms[] = {
         {"dictionary", ".dict", dict_comp, dict_decomp},
-        {"Run length", ".rl", rl_comp, rl_decomp}
+        {"huffman", ".hfmn", huffman_comp, huffman_decomp}
     };
 
+int are_equal(FILE * f1, FILE * f2){
+    rewind(f1);
+    rewind(f2);
+    int c1, c2;
+    do{
+        c1 = fgetc(f1);
+        c2 = fgetc(f2);
+    }while(c1 == c2 && c1 != EOF && c2 != EOF);
 
-int main(){
-    FILE * f = fopen("bee movie script", "r");
-    FILE * out = fopen("bee movie script.temp", "w");
-    dict_comp(f, out);
+    if(c1 == EOF && c2 == EOF)
+        return 1;
 
-    fseek(f, 0, SEEK_END);
+    printf("ERROR AT CHARACTER %li f1:%c(%i) f2:%c(%i)\n", ftell(f1), c1, c1, c2, c2);
+    return 0;
+}
+
+int main(int len, char ** arr){
+    char * original = "main.c";
+    if(len > 1)
+        original = arr[1];
+    int alg = 1;
+
+    FILE * in = fopen(original, "rb");
+    FILE * out = fopen("compressed.temp", "wb");
+
+    printf("Compressing %s...\n", original);
+    clock_t t1 = clock();
+    algorithms[alg].compress(in, out);
+    clock_t t2 = clock();
+    printf("Compressed in %lf\n", (t2 - t1) / (double)CLOCKS_PER_SEC);
+
+    fseek(in, 0, SEEK_END);
     fseek(out, 0, SEEK_END);
 
-    long input_size = ftell(f), output_size = ftell(out);
-    printf("dictionary:\n Original size: %10li\nResulting size: %10li\nResulting comp: %10.3lf%%\n", input_size, output_size, output_size*100.0/input_size);
+    long input_size = ftell(in), output_size = ftell(out);
+    printf("%s:\n Original size: %10li\nResulting size: %10li\nResulting comp: %10.3lf%%\n", algorithms[alg].name,input_size, output_size, output_size*100.0/input_size);
 
-    fclose(f);
+    fclose(in);
     fclose(out);
 
+    in = fopen("compressed.temp", "rb");
+    out = fopen("decompressed.temp", "wb");
+
+    printf("Decompressing compressed.temp...\n");
+    t1 = clock();
+    algorithms[alg].decompress(in, out);
+    t2 = clock();
+    printf("Decompressed in %lf\n", (t2 - t1) / (double)CLOCKS_PER_SEC);
+
+    fclose(out);
+    fclose(in);
+
+    in = fopen(original, "rb");
+    out = fopen("decompressed.temp", "rb");
+
+    if(are_equal(in, out))
+        printf("files are equal\n");
+    else
+        printf("files are NOT equal\n");
+
+    fclose(in);
+    fclose(out);
     return 0;
 }

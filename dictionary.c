@@ -17,7 +17,7 @@ typedef struct{
     char * original;
 }dictEntry;
 
-#define BANNED " \n\t{}[]()<=>+-*/%;.,\"\'\\&!^~|?"
+#define BANNED " \n\t{}[]()<=>+-*/%;:.,\"\'\\&!^~|?"
 
 int isBanned(unsigned char c){
     if(c < 32 || c >= 127)
@@ -35,6 +35,12 @@ int dict_original_compare(const void * a, const void * b){
     const dictEntry * d1 = a, * d2 = b;
 
     return strcmp(d1->original, d2->original);
+}
+
+int dict_trans_compare(const void * a, const void * b){
+    const dictEntry * d1 = a, * d2 = b;
+
+    return strcmp(d1->transpose, d2->transpose);
 }
 
 int dict_count_compare(const void * a, const void * b){
@@ -55,17 +61,12 @@ int dict_potential_compare(const void * a, const void * b){
     return potential(d1) - potential(d2);
 }
 
-void nextComb(char arr[12]){
-    int i = 0;
+void nextComb(char * arr){
     do{
-       arr[i]++;
-       if(arr[i] == 0){
-           do{
-               arr[i]++;
-           }while(isBanned(arr[i]));
-           i++;
-       }
-    }while(isBanned(arr[i]));
+        (*arr)++;
+        if(*arr == 0)
+            nextComb(arr+1);
+    }while(isBanned(*arr));
 }
 
 void dict_comp(FILE * source, FILE * dest){
@@ -106,7 +107,7 @@ void dict_comp(FILE * source, FILE * dest){
             }else{
                 //nuevo malloc
                 len = 2;
-                s = malloc(sizeof(unsigned char) * len);
+                s = malloc(sizeof(unsigned char) * 2);
                 s[0] = c;
                 s[1] = '\0';
             }
@@ -137,7 +138,7 @@ void dict_comp(FILE * source, FILE * dest){
     }
 
     transposeLen = 0;
-    char transpose[12] = {'\0'};
+    char transpose[12] = "\0\0\0\0\0\0\0\0\0\0\0";
     list finalDict = list_init();
 
     while(1){
@@ -174,7 +175,7 @@ void dict_comp(FILE * source, FILE * dest){
     //escribir en el resultado el diccionario
     for(int i = 0; i < list_length(finalDict); i++){
         dictEntry * p = list_get(finalDict, i);
-        fprintf(dest, "%s\t%s\n", (char *)p->transpose, (char *)p->original);
+        fprintf(dest, "%s %s ", (char *)p->transpose, (char *)p->original);
     }
     fputc('\n', dest);
 
@@ -211,7 +212,7 @@ void dict_comp(FILE * source, FILE * dest){
             }else{
                 //nuevo malloc
                 len = 2;
-                s = malloc(sizeof(unsigned char) * len);
+                s = malloc(sizeof(unsigned char) * 2);
                 s[0] = c;
                 s[1] = '\0';
             }
@@ -246,5 +247,104 @@ void dict_comp(FILE * source, FILE * dest){
 }
 
 void dict_decomp(FILE * source, FILE * dest){
-    //todo
+    //leer el diccionario
+    rewind(source);
+    rewind(dest);
+    int c = fgetc(source);
+    list dictionary = list_init();
+    while(c != '\n'){
+        char * s;
+        s = malloc(sizeof(char) * 2);
+        dictEntry * d = malloc(sizeof(dictEntry));
+        s[0] = c;
+        s[1] = '\0';
+        c = fgetc(source);
+        int len = 2;
+        //leer primera parte de la entrada
+        while(c != ' '){
+            s = realloc(s, ++len * sizeof(char));
+            s[len-2] = c;
+            s[len-1] = '\0';
+            c = fgetc(source);
+        }
+        strcpy(d->transpose, s);
+        free(s);
+        c = fgetc(source);
+        s = malloc(sizeof(char) * 2);
+        s[0] = c;
+        s[1] = '\0';
+        c = fgetc(source);
+        len = 2;
+        //leer primera parte de la entrada
+        while(c != ' '){
+            s = realloc(s, ++len * sizeof(char));
+            s[len-2] = c;
+            s[len-1] = '\0';
+            c = fgetc(source);
+        }
+        d->original = s;
+        list_ordered_insert(dictionary, d, dict_trans_compare);
+        c = fgetc(source);
+    }
+    //escribir traduciendo del diccionario
+    c = fgetc(source);
+    char * s = NULL;
+    int len = 0;
+    while(c != EOF){
+        if(isBanned(c)){
+            if(s != NULL){
+                dictEntry aux;
+                strcpy(aux.transpose, s);
+                int indx = list_bsearch(dictionary, &aux, dict_trans_compare);
+                if(indx < 0){
+                    fputs(s, dest);
+                    free(s);
+                    s = NULL;
+                }else{
+                    aux = *(dictEntry *)list_get(dictionary, indx);
+                    fputs(aux.original, dest);
+                    free(s);
+                    s = NULL;
+                }
+            }
+            fputc(c, dest);
+        }else{
+            if (s == NULL){
+                s = malloc(sizeof(char) * 2);
+                len = 2;
+                s[0] = c;
+                s[1] = '\0';
+            }else{
+                s = realloc(s, sizeof(char)* ++len);
+                s[len-2] = c;
+                s[len-1] = '\0';
+            }
+        }
+        c = fgetc(source);
+    }
+
+    //string final
+    if(s != NULL){
+        dictEntry aux;
+        strcpy(aux.transpose, s);
+        int indx = list_bsearch(dictionary, &aux, dict_trans_compare);
+        if(indx < 0){
+            fputs(s, dest);
+            free(s);
+            s = NULL;
+        }else{
+            aux = *(dictEntry *)list_get(dictionary, indx);
+            fputs(aux.original, dest);
+            free(s);
+            s = NULL;
+        }
+    }
+
+    //liberar mem
+    while(list_length(dictionary)){
+        dictEntry * d = list_pop(dictionary);
+        free(d->original);
+        free(d);
+    }
+    list_free(dictionary);
 }
