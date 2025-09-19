@@ -151,7 +151,67 @@ void huffman_comp(FILE * source, FILE * dest){
     free_hufftree(t);
 }
 
+void rec_read(FILE * f, hufftree t){
+    int c = fgetc(f);
+    if (c == '{'){
+        t->l = malloc(sizeof(struct hufftree));
+        rec_read(f, t->l);
+        fgetc(f); //remove {
+        t->r = malloc(sizeof(struct hufftree));
+        rec_read(f, t->r);
+        t->endChar = -2;
+    }else{
+        if (c == '\\'){
+            c = fgetc(f);
+            if (c == 'e'){
+                t->isEOF = 1;
+                t->endChar = EOF;
+                goto SKIP;
+            }
+        }
+        t->isEOF = 0;
+        t->endChar = c;
+        SKIP:
+        t->l = NULL;
+        t->r = NULL;
+    }
+
+    fgetc(f); //remove }
+}
+
+hufftree read_tree(FILE * f){
+    hufftree t = malloc(sizeof(struct hufftree));
+    fgetc(f);
+    rec_read(f, t);
+    return t;
+}
+
 
 void huffman_decomp(FILE * source, FILE * dest){
-    //todo
+    hufftree t = read_tree(source);
+
+    hufftree aux = t;
+    while (1){
+        int c = fgetc(source);
+        for (int i = 0x80; i > 0; i>>=1){
+            if (aux->endChar == -2){
+                if (c & i){
+                    aux = aux->r;
+                }else{
+                    aux = aux->l;
+                }
+            }else if(aux->endChar == EOF)
+                break;
+            else{
+                //print character and return to top
+                fputc(aux->endChar, dest);
+                aux = t;
+                i<<=1;
+            }
+        }
+        if (aux->endChar == EOF)
+            break;
+    }
+
+    free_hufftree(t);
 }
