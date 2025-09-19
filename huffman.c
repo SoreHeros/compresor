@@ -19,6 +19,15 @@ int freq_compare_rev(const void * p1, const void * p2){
     return t2->freq - t1->freq;
 }
 
+void free_hufftree(hufftree t){
+    if (t == NULL)
+        return;
+
+    free_hufftree(t->l);
+    free_hufftree(t->r);
+    free(t);
+}
+
 void print_tree(FILE * f, hufftree t){
     fputc('{', f);
     if(t->l == NULL){
@@ -36,6 +45,31 @@ void print_tree(FILE * f, hufftree t){
         print_tree(f, t->r);
     }
     fputc('}', f);
+}
+
+//returns the number of bits added to buff
+int get_comp_from_tree(hufftree t, int c, unsigned long long int * buff){
+    if (t->l == NULL)
+        return 0;
+    if (t->l->contains[c]){
+        *buff = *buff << 1 | 0b0;
+        return 1 + get_comp_from_tree(t->l, c, buff);
+    }else{
+        *buff = *buff << 1 | 0b1;
+        return 1 + get_comp_from_tree(t->r, c, buff);
+    }
+}
+
+int get_EOF_from_tree(hufftree t, unsigned long long int * buff){
+    if (t->l == NULL)
+        return 0;
+    if (t->l->isEOF){
+        *buff = *buff << 1 | 0b0;
+        return 1 + get_EOF_from_tree(t->l, buff);
+    }else{
+        *buff = *buff << 1 | 0b1;
+        return 1 + get_EOF_from_tree(t->r, buff);
+    }
 }
 
 void huffman_comp(FILE * source, FILE * dest){
@@ -93,9 +127,28 @@ void huffman_comp(FILE * source, FILE * dest){
 
     print_tree(dest, t);
 
-    //todo leer valor y conseguir compressión del arbol
+    rewind(source);
+    c = fgetc(source);
+    unsigned long long int buff = 0;
+    int len = 0;
 
-    //todo free hufftree
+    //do full text
+    while (c != EOF){
+        len += get_comp_from_tree(t, c, &buff);
+
+        while (len >= 8)
+            fputc(buff >> (len -= 8) & 0xff, dest);
+
+        c = fgetc(source);
+    }
+
+    //do EOF
+    len += get_EOF_from_tree(t, &buff);
+    while (len >= 8)
+        fputc(buff >> (len -= 8) & 0xff, dest);
+    fputc(buff << (8 - len) & 0xff, dest);
+
+    free_hufftree(t);
 }
 
 

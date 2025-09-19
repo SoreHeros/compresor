@@ -1,15 +1,15 @@
 result = compresor
 main = main.c
 CC=gcc
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall -Wextra -g
 OBJS = $(patsubst %.h, %.o, $(wildcard *.h))
 
 $(result): $(main) $(OBJS)
-	$(CC) $(CFLAGS) -g -o $(result) $(main) $(OBJS)
+	$(CC) $(CFLAGS) -o $(result) $(main) $(OBJS)
 
 #compilar todos los objetos
 %.o: %.c %.h
-	$(CC) $(CFLAGS) -c -g -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 .PHONY: clean leak
 
