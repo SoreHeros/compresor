@@ -10,6 +10,7 @@
 #include "dictionary.h"
 #include "huffman.h"
 #include "lists.h"
+#include "sliding_window.h"
 
 struct{
     char name[16];
@@ -18,7 +19,8 @@ struct{
     void (*decompress)(FILE *, FILE *);
 }algorithms[] = {
         {"dictionary", ".dict", dict_comp, dict_decomp},
-        {"huffman", ".hfmn", huffman_comp, huffman_decomp}
+        {"huffman", ".hfmn", huffman_comp, huffman_decomp},
+        {"sliding window", ".slw", sw_compress, sw_decompress}
     };
 
 int are_equal(FILE * f1, FILE * f2){
@@ -39,9 +41,12 @@ int are_equal(FILE * f1, FILE * f2){
 
 int main(int len, char ** arr){
     char * original = "main.c";
-    if(len > 1)
-        original = arr[1];
     int alg = 1;
+    if (len > 1)
+        alg = atoi(arr[1]);
+
+    if(len > 2)
+        original = arr[2];
 
     FILE * in = fopen(original, "rb");
     FILE * out = fopen("compressed.temp", "wb");
@@ -56,7 +61,7 @@ int main(int len, char ** arr){
     fseek(out, 0, SEEK_END);
 
     long input_size = ftell(in), output_size = ftell(out);
-    printf("%s:\n Original size: %10li\nResulting size: %10li\nResulting comp: %10.3lf%%\n", algorithms[alg].name,input_size, output_size, output_size*100.0/input_size);
+    printf("%s:\n Original size: %10li\nResulting size: %10li\nResulting comp: %10.3lf%%\n", algorithms[alg].name,input_size, output_size, 100.0 - output_size*100.0/input_size);
 
     fclose(in);
     fclose(out);
