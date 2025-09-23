@@ -20,7 +20,7 @@ struct{
 }algorithms[] = {
         {"dictionary", ".dict", dict_comp, dict_decomp},
         {"huffman", ".hfmn", huffman_comp, huffman_decomp},
-        {"sliding window", ".slw", sw_compress, sw_decompress}
+        {"sliding window", ".slwi", sw_compress, sw_decompress}
     };
 
 int are_equal(FILE * f1, FILE * f2){

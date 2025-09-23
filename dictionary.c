@@ -190,7 +190,7 @@ void dict_comp(FILE * source, FILE * dest){
                 dictEntry d;
                 d.original = s;
 
-                int indx = list_search(finalDict, &d, dict_original_compare);
+                int indx = list_bsearch(finalDict, &d, dict_original_compare);
 
                 if(indx < 0){
                     fputs(s, dest);
@@ -225,7 +225,7 @@ void dict_comp(FILE * source, FILE * dest){
         dictEntry d;
         d.original = s;
 
-        int indx = list_search(finalDict, &d, dict_original_compare);
+        int indx = list_bsearch(finalDict, &d, dict_original_compare);
 
         if(indx < 0){
             fputs(s, dest);
