@@ -14,7 +14,7 @@ $(result): $(main) $(OBJS)
 .PHONY: clean leak
 
 leak: $(result)
-	valgrind --leak-check=full --show-leak-kinds=all ./$(result)
+	valgrind --leak-check=full --show-leak-kinds=all ./$(result) $(ARGS)
 
 all: $(result)
 
