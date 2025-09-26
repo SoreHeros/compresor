@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define INITALLOC 32
+
 //internal functions
 struct list{
     void ** data;
@@ -30,8 +32,8 @@ int resize_list(list l){
 list list_init(){
     list l = malloc(sizeof(struct list));
 
-    l->data = malloc(sizeof(void *));
-    l->data_len = 1;
+    l->data = malloc(sizeof(void *) * INITALLOC);
+    l->data_len = INITALLOC;
     l->list_len = 0;
 
     return l;
