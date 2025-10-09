@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "dictionary.h"
+#include "difference.h"
 #include "huffman.h"
 #include "lists.h"
 #include "sliding_window.h"
@@ -20,7 +21,8 @@ struct{
 }algorithms[] = {
         {"dictionary", ".dict", dict_comp, dict_decomp},
         {"huffman", ".hfmn", huffman_comp, huffman_decomp},
-        {"sliding window", ".slwi", sw_compress, sw_decompress}
+        {"sliding window", ".slwi", sw_compress, sw_decompress},
+        {"difference", ".diff", difference_comp, difference_decomp}
     };
 
 int are_equal(FILE * f1, FILE * f2){
