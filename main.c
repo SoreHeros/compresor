@@ -9,9 +9,11 @@
 
 #include "dictionary.h"
 #include "difference.h"
+#include "entropy.h"
 #include "huffman.h"
 #include "lists.h"
 #include "sliding_window.h"
+#include "entropy.h"
 
 struct{
     char name[16];
@@ -87,6 +89,12 @@ int main(int len, char ** arr){
         printf("files are equal\n");
     else
         printf("files are NOT equal\n");
+
+    fclose(out);
+    out = fopen("compressed.temp", "rb");
+    rewind(in);
+    printf("Original entropy: %lf\n", measure_entropy(in));
+    printf("Compressed entropy: %lf\n", measure_entropy(out));
 
     fclose(in);
     fclose(out);

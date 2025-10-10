@@ -5,7 +5,7 @@ CFLAGS = -Wall -Wextra -g
 OBJS = $(patsubst %.h, %.o, $(wildcard *.h))
 
 $(result): $(main) $(OBJS)
-	$(CC) $(CFLAGS) -o $(result) $(main) $(OBJS)
+	$(CC) $(CFLAGS) -o $(result) $(main) $(OBJS) -lm
 
 #compilar todos los objetos
 %.o: %.c %.h
