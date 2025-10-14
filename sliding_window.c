@@ -3,101 +3,254 @@
 //
 
 #include "sliding_window.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <asm-generic/errno.h>
+
 #include "lists.h"
 
-#define BUFSIZE 256
 
+#define LENGTHBITS 8
+#define OFFSETBITS 8
+#define BUFFERSIZE (0b1 << OFFSETBITS)
+#define LENGTHSIZE (0b1 << LENGTHBITS)
+#define MINMATCH   (2 + (OFFSETBITS + LENGTHBITS) / 8 + !!((OFFSETBITS + LENGTHBITS) % 8))
+#define CLEANUPTIME BUFFERSIZE
 
-void buff_add(char buff[BUFSIZE], int *indx, char c){
-    buff[++*indx] = c;
-    if (*indx >= BUFSIZE)
-        *indx %= BUFSIZE;
+typedef struct{
+    int length;
+    int offset;
+}pair;
+
+typedef struct trie{
+    int filled;
+    union{
+        struct trie * tries[256];
+        list lists[256];
+    };
+}* trie;
+
+typedef struct buffer{
+    unsigned char buff[BUFFERSIZE];
+    long long int indx, last_written;
+    trie t;
+}* buffer;
+
+trie trie_init(){
+    trie t = malloc(sizeof(struct trie));
+    t->filled = 0;
+    for (int i = 0; i < 256; i++)
+        t->tries[i] = NULL;
+    return t;
 }
 
-//returns a list with all the matches
-list buff_search(char buff[BUFSIZE], int indx){
-    int aux = indx + BUFSIZE + BUFSIZE;
-    list l = list_init();
-    for (int i = 1; i < BUFSIZE - 3; i++){
-        if(buff[(aux - i - 3) % BUFSIZE] == buff[(aux - 3) % BUFSIZE] && buff[(aux - i - 2) % BUFSIZE] == buff[(aux - 2) % BUFSIZE] && buff[(aux - i - 1) % BUFSIZE] == buff[(aux - 1) % BUFSIZE] && buff[(aux - i) % BUFSIZE] == buff[(aux) % BUFSIZE])
-            list_append(l, (void *)i);
+void add_match(trie t, unsigned char * match, unsigned long long int indx, int matchLen){
+    if (matchLen <= 1){
+        if (t->lists[*match] == NULL){
+            t->filled++;
+            t->lists[*match] = list_init();
+        }
+        list_append(t->lists[*match], (void *)indx);
+    }else{
+        if (t->tries[*match] == NULL){
+            t->filled++;
+            t->tries[*match] = trie_init();
+        }
+        add_match(t->tries[*match], match+1, indx, matchLen-1);
     }
-    if(list_length(l))
-        return l;
-    list_free(l);
+}
+
+void remove_match(trie t, unsigned char * match, int matchLen){
+    if (matchLen <= 1){
+        list_remove(t->lists[*match], 0);
+        if (list_length(t->lists[*match]) == 0){
+            list_free(t->lists[*match]);
+            t->lists[*match] = NULL;
+            t->filled--;
+        }
+    }else{
+        remove_match(t->tries[*match], match+1, matchLen-1);
+        if (t->tries[*match]->filled == 0){
+            free(t->tries[*match]);
+            t->tries[*match] = NULL;
+            t->filled--;
+        }
+    }
+}
+
+buffer buffer_init(){
+    buffer b = malloc(sizeof(struct buffer));
+    b->indx = -1;
+    b->last_written = -1;
+    b->t = trie_init();
+    return b;
+}
+
+void trie_full_free(trie t, int depth){
+    if (t == NULL)
+        return;
+    if (depth <= 1){
+        for (int i = 0; i < 256; i++)
+            if (t->lists[i] != NULL)
+                list_free(t->lists[i]);
+    }else{
+        for (int i = 0; i < 256; i++){
+            trie_full_free(t->tries[i], depth-1);
+            free(t->tries[i]);
+        }
+    }
+}
+
+void buffer_free(buffer b){
+    trie_full_free(b->t, MINMATCH);
+    free(b->t);
+    b->t = NULL;
+    b->indx = 0;
+    b->last_written = 0;
+    free(b);
+}
+
+list get_match(trie t, unsigned char * match, int matchLen){
+    if (t == NULL)
+        return NULL;
+    if (matchLen <= 1){
+        return t->lists[*match];
+    }
+    return get_match(t->tries[*match], match+1, matchLen-1);
+}
+
+void read_to_buffer(buffer b, int c){
+    if (b->indx >= BUFFERSIZE - 1){
+        unsigned char match[MINMATCH];
+        for (int i = 0; i < MINMATCH; i++)
+            match[i] = b->buff[(b->indx + i + 1) % BUFFERSIZE];
+        remove_match(b->t, match, MINMATCH);
+    }
+
+    b->buff[++b->indx % BUFFERSIZE] = c;
+
+    if (b->indx >= MINMATCH){
+        unsigned char match[MINMATCH];
+        for (int i = 0; i < MINMATCH; i++)
+            match[i] = b->buff[(b->indx - MINMATCH + i) % BUFFERSIZE];
+        add_match(b->t, match, b->indx - MINMATCH, MINMATCH);
+    }
+}
+
+unsigned char * get_min_match(buffer b){
+    if (b->indx > MINMATCH + b->last_written){
+        unsigned char * match = malloc(sizeof(unsigned char) * MINMATCH);
+        for (int i = 0; i < MINMATCH; i++)
+            match[i] = b->buff[(b->indx - MINMATCH + i + 1) % BUFFERSIZE];
+        return match;
+    }
     return NULL;
 }
 
-
-void buff_match_last_from_list(char buff[BUFSIZE], int indx, list match){
-    list apt = list_init();
-
-    //get apt
-    for (int i = 0; i < list_length(match); i++)
-        if (buff[(indx + BUFSIZE - (int)list_get(match, i)) % BUFSIZE] == buff[indx])
-            list_append(apt, list_get(match, i));
-
-    //empty list
-    while (list_length(match))
-        list_pop(match);
-
-    //replace with apt
-    while (list_length(apt))
-        list_append(match, list_pop(apt));
+list search_match(buffer b, unsigned char * match){
+    list aux = get_match(b->t, match, MINMATCH);
+    list l = list_init();
+    if (aux == NULL)
+        return l;
+    for (int i = 0; i < list_length(aux); i++){
+        unsigned long long int indx = (unsigned long long int)list_get(aux, i);
+        pair p = {MINMATCH, b->indx - indx - MINMATCH + 1};
+        list_append(l, *(void **)&p);
+    }
+    return l;
 }
+
+list expand_match(list l, buffer b){
+    list new = list_init();
+    for (int i = 0; i < list_length(l); i++){
+        void * aux = list_get(l, i);
+        pair p = *(pair *)&aux;
+        if (b->buff[b->indx % BUFFERSIZE] == b->buff[(b->indx - p.offset) % BUFFERSIZE]){
+            p.length++;
+            list_append(new, *(void**)&p);
+        }
+    }
+    return new;
+}
+
+void write_match(list l, buffer b, FILE * f){
+    void * aux = list_get(l, list_length(l)-1);
+    pair p = *(pair *)&aux;
+
+    //todo hacer que escriba dependiendo del número de bits
+    fputc('\\', f);
+    fputc(p.length, f);//length va primero porque si length es 0 entonces significa que es el caracter de control por si mismo
+    fputc(p.offset, f);
+
+    b->last_written += p.length;
+}
+
+void write_normal(buffer b, FILE * f){
+    if (b->last_written < b->indx - MINMATCH){
+        unsigned char c = b->buff[++b->last_written % BUFFERSIZE];
+        fputc(c, f);
+        if (c == '\\')//hacer que el tamaño dependa del tamaño de LENGTHBITS
+            fputc('\0', f);
+    }
+}
+
+void write_last(buffer b, FILE * f){
+    while (b->last_written < b->indx){
+        unsigned char c = b->buff[++b->last_written % BUFFERSIZE];
+        fputc(c, f);
+        if (c == '\\')//hacer que el tamaño dependa del tamaño de LENGTHBITS
+            fputc('\0', f);
+    }
+}
+
+void buffer_add(buffer b, int c);
+void buffer_write();
+void buffer_write_last();
 
 void sw_compress(FILE * source, FILE * dest){
-    char buff[BUFSIZE] = {0};
-    int indx = -1;
-    list match = NULL;
-    int c = fgetc(source);
-    int maxlen, maxindx;
-    int count = 0;
-    while (c != EOF){
-        count++;
-        buff_add(buff, &indx, c);
+    rewind(source);
+    rewind(dest);
 
-        if(match == NULL){
-            if (count >= 3){
-                count = 3;
-                match = buff_search(buff, indx);
-                if (match != NULL){
-                    fseek(dest, -3, SEEK_CUR);
-                    maxlen = 4;
-                }
+    buffer b = buffer_init();
+    int c = fgetc(source);
+    list l = NULL;
+    while(c != EOF){
+        read_to_buffer(b, c);
+        if (l != NULL){
+            list temp = expand_match(l, b);
+            if (!list_length(temp)){
+                write_match(l, b, dest);
+                list_free(l);
+                list_free(temp);
+                l = NULL;
+            }else{
+                list_free(l);
+                l = temp;
             }
         }else{
-            maxindx = (int)list_get(match, 0);
-            buff_match_last_from_list(buff, indx, match); //teóroicamente se podría cambiar para que no intente siempre comprimir de primeras, si no que si encuentra una compresión mejor utilizando otro de los 3 primeros distintos
-            if(list_length(match) && maxlen < 256)
-                maxlen++;
-            else{
-                fputc('\\', dest);
-                fputc(maxindx, dest);
-                fputc(maxlen, dest);
-                list_free(match);
+            unsigned char * match = get_min_match(b);
+            if (match != NULL){
+                l = search_match(b, match);
+                free(match);
                 match = NULL;
-                count = 0;
+                if(!list_length(l)){
+                    list_free(l);
+                    l = NULL;
+                }
             }
+            write_normal(b, dest);
         }
-
-        if (match == NULL){
-            if (c == '\\')
-                fputc('\\', dest);
-            fputc(c, dest);
-        }
-
-
         c = fgetc(source);
     }
-    //escribir último buffer
-    if (match != NULL){
-        fputc('\\', dest);
-        fputc(maxindx, dest);
-        fputc(maxlen, dest);
-        list_free(match);
-    }
+    if (l != NULL){
+        write_match(l, b, dest);
+        list_free(l);
+        l = NULL;
+    }else
+        write_last(b, dest);
+    buffer_free(b);
 }
 void sw_decompress(FILE * source, FILE * dest){
-    char buff[BUFSIZE] = {0};
+
 }
