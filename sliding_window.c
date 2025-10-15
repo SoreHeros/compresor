@@ -64,20 +64,18 @@ void add_match(trie t, unsigned char * match, unsigned long long int indx, int m
 void remove_match(trie t, unsigned char * match, int matchLen){
     if (matchLen <= 1){
         list_remove(t->lists[*match], 0);
-        /*
         if (list_length(t->lists[*match]) == 0){
             list_free(t->lists[*match]);
             t->lists[*match] = NULL;
             t->filled--;
-        }*/
+        }
     }else{
         remove_match(t->tries[*match], match+1, matchLen-1);
-        /*
         if (t->tries[*match]->filled == 0){
             free(t->tries[*match]);
             t->tries[*match] = NULL;
             t->filled--;
-        }*/
+        }
     }
 }
 
