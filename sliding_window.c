@@ -12,7 +12,7 @@
 
 
 #define LENGTHBITS 8
-#define OFFSETBITS 8
+#define OFFSETBITS 16
 #define BUFFERSIZE (0b1 << OFFSETBITS)
 #define LENGTHSIZE (0b1 << LENGTHBITS)
 #define MINMATCH   (2 + (OFFSETBITS + LENGTHBITS) / 8 + !!((OFFSETBITS + LENGTHBITS) % 8))
@@ -64,18 +64,20 @@ void add_match(trie t, unsigned char * match, unsigned long long int indx, int m
 void remove_match(trie t, unsigned char * match, int matchLen){
     if (matchLen <= 1){
         list_remove(t->lists[*match], 0);
+        /*
         if (list_length(t->lists[*match]) == 0){
             list_free(t->lists[*match]);
             t->lists[*match] = NULL;
             t->filled--;
-        }
+        }*/
     }else{
         remove_match(t->tries[*match], match+1, matchLen-1);
+        /*
         if (t->tries[*match]->filled == 0){
             free(t->tries[*match]);
             t->tries[*match] = NULL;
             t->filled--;
-        }
+        }*/
     }
 }
 
@@ -181,7 +183,8 @@ void write_match(list l, buffer b, FILE * f){
     //todo hacer que escriba dependiendo del número de bits
     fputc('\\', f);
     fputc(p.length, f);//length va primero porque si length es 0 entonces significa que es el caracter de control por si mismo
-    fputc(p.offset, f);
+    fputc(p.offset >> 8, f);
+    fputc(p.offset & 0xff, f);
 
     b->last_written += p.length;
 }
@@ -215,11 +218,13 @@ void sw_compress(FILE * source, FILE * dest){
     buffer b = buffer_init();
     int c = fgetc(source);
     list l = NULL;
+    int len = 0;
     while(c != EOF){
         read_to_buffer(b, c);
         if (l != NULL){
             list temp = expand_match(l, b);
-            if (!list_length(temp)){
+            len++;
+            if (!list_length(temp) || len == LENGTHSIZE){
                 write_match(l, b, dest);
                 list_free(l);
                 list_free(temp);
@@ -234,6 +239,7 @@ void sw_compress(FILE * source, FILE * dest){
                 l = search_match(b, match);
                 free(match);
                 match = NULL;
+                len = 0;
                 if(!list_length(l)){
                     list_free(l);
                     l = NULL;
