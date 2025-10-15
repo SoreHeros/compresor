@@ -10,7 +10,7 @@
 #include "lists.h"
 
 
-#define LENGTHBITS 8
+#define LENGTHBITS 7
 #define OFFSETBITS 16
 #define BUFFERSIZE (0b1 << OFFSETBITS)
 #define LENGTHSIZE (0b1 << LENGTHBITS)
@@ -114,11 +114,11 @@ list expand_match(list l, buffer b){
 void write_match(list l, buffer b, FILE * f){
     long long int offset = (long long int)list_get(l, list_length(l)-1);
 
-    //todo hacer que escriba dependiendo del número de bits
     fputc('\\', f);
-    fputc(b->indx - 1 - b->last_written, f);//length va primero porque si length es 0 entonces significa que es el caracter de control por si mismo
-    fputc(offset >> 8, f);
+    fputc(b->indx - 1 - b->last_written + (offset > 0xff ? 0x80 : 0x00), f);//length va primero porque si length es 0 entonces significa que es el caracter de control por si mismo, y el bit superior significa si el offset mide 1 o 2 bytes
     fputc(offset & 0xff, f);
+    if (offset > 0xff)
+        fputc(offset >> 8, f); //escribir solo si es necesario
 
     b->last_written = b->indx - 1;
 }
@@ -126,11 +126,11 @@ void write_match(list l, buffer b, FILE * f){
 void write_last_match(list l, buffer b, FILE * f){
     long long int offset = (long long int)list_get(l, list_length(l)-1);
 
-    //todo hacer que escriba dependiendo del número de bits
     fputc('\\', f);
-    fputc(b->indx - b->last_written, f);//length va primero porque si length es 0 entonces significa que es el caracter de control por si mismo
-    fputc(offset >> 8, f);
+    fputc(b->indx - b->last_written + (offset > 0xff ? 0x80 : 0x00), f);//length va primero porque si length es 0 entonces significa que es el caracter de control por si mismo, y el bit superior significa si el offset mide 1 o 2 bytes
     fputc(offset & 0xff, f);
+    if (offset > 0xff)
+        fputc(offset >> 8, f); //escribir solo si es necesario
 
     b->last_written = b->indx;
 }
@@ -223,8 +223,11 @@ void sw_decompress(FILE * source, FILE * dest){
                 b[++indx % BUFFERSIZE] = '\\';
                 fputc('\\', dest);
             }else{
-                int offset = fgetc(source) << 8;
-                offset |= fgetc(source);
+                int offset = fgetc(source);
+                if (len & 0x80){
+                    len &= ~0x80;
+                    offset |= fgetc(source) << 8;
+                }
                 long_write(b, &indx, len, offset, dest);
             }
         }else{
