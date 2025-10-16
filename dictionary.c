@@ -13,7 +13,7 @@
 
 typedef struct{
     int count;
-    char transpose[12];
+    char transpose[20]; //todo fix lo de que el string de la línea 297 es demasiado grande
     char * original;
 }dictEntry;
 

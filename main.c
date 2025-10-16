@@ -49,54 +49,59 @@ int main(int len, char ** arr){
     if (len > 1)
         alg = atoi(arr[1]);
 
-    if(len > 2)
-        original = arr[2];
+    int fileIndx = 2;
+    do{
+        if(len > fileIndx)
+            original = arr[fileIndx];
 
-    FILE * in = fopen(original, "rb");
-    FILE * out = fopen("compressed.temp", "wb");
+        FILE * in = fopen(original, "rb");
+        FILE * out = fopen("compressed.temp", "wb");
 
-    printf("Compressing %s...\n", original);
-    clock_t t1 = clock();
-    algorithms[alg].compress(in, out);
-    clock_t t2 = clock();
-    printf("Compressed in %lf\n", (t2 - t1) / (double)CLOCKS_PER_SEC);
+        printf("Compressing %s...\n", original);
+        clock_t t1 = clock();
+        algorithms[alg].compress(in, out);
+        clock_t t2 = clock();
+        printf("Compressed in %lf\n", (t2 - t1) / (double)CLOCKS_PER_SEC);
 
-    fseek(in, 0, SEEK_END);
-    fseek(out, 0, SEEK_END);
+        fseek(in, 0, SEEK_END);
+        fseek(out, 0, SEEK_END);
 
-    long input_size = ftell(in), output_size = ftell(out);
-    printf("%s:\n Original size: %10li\nResulting size: %10li\nResulting comp: %10.3lf%%\n", algorithms[alg].name,input_size, output_size, 100.0 - output_size*100.0/input_size);
+        long input_size = ftell(in), output_size = ftell(out);
+        printf("%s:\n Original size: %10li\nResulting size: %10li\nResulting comp: %10.3lf%%\n", algorithms[alg].name,input_size, output_size, 100.0 - output_size*100.0/input_size);
 
-    fclose(in);
-    fclose(out);
+        fclose(in);
+        fclose(out);
 
-    in = fopen("compressed.temp", "rb");
-    out = fopen("decompressed.temp", "wb");
+        in = fopen("compressed.temp", "rb");
+        out = fopen("decompressed.temp", "wb");
 
-    printf("Decompressing compressed.temp...\n");
-    t1 = clock();
-    algorithms[alg].decompress(in, out);
-    t2 = clock();
-    printf("Decompressed in %lf\n", (t2 - t1) / (double)CLOCKS_PER_SEC);
+        printf("Decompressing compressed.temp...\n");
+        t1 = clock();
+        algorithms[alg].decompress(in, out);
+        t2 = clock();
+        printf("Decompressed in %lf\n", (t2 - t1) / (double)CLOCKS_PER_SEC);
 
-    fclose(out);
-    fclose(in);
+        fclose(out);
+        fclose(in);
 
-    in = fopen(original, "rb");
-    out = fopen("decompressed.temp", "rb");
+        in = fopen(original, "rb");
+        out = fopen("decompressed.temp", "rb");
 
-    if(are_equal(in, out))
-        printf("files are equal\n");
-    else
-        printf("files are NOT equal\n");
+        if(are_equal(in, out))
+            printf("files are equal\n");
+        else
+            printf("files are NOT equal\n");
 
-    fclose(out);
-    out = fopen("compressed.temp", "rb");
-    rewind(in);
-    printf("Original entropy: %lf\n", measure_entropy(in));
-    printf("Compressed entropy: %lf\n", measure_entropy(out));
+        fclose(out);
+        out = fopen("compressed.temp", "rb");
+        rewind(in);
+        printf("Original entropy: %lf\n", measure_entropy(in));
+        printf("Compressed entropy: %lf\n", measure_entropy(out));
 
-    fclose(in);
-    fclose(out);
+        fclose(in);
+        fclose(out);
+
+        fileIndx++;
+    }while (len > fileIndx);
     return 0;
 }

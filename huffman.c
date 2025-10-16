@@ -14,9 +14,7 @@ typedef struct hufftree{
 }* hufftree;
 
 int freq_compare_rev(const void * p1, const void * p2){
-    const hufftree t1 = p1, t2 = p2;
-
-    return t2->freq - t1->freq;
+    return ((hufftree)p2)->freq - ((hufftree)p1)->freq;
 }
 
 void free_hufftree(hufftree t){

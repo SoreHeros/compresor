@@ -32,7 +32,7 @@ buffer buffer_init(){
     return b;
 }
 
-void buffer_free(buffer b){
+void buffer_free(const buffer restrict b){
     for (int i = 0; i < 256*256; i++){
             list_free(b->listBuff[i]);
             b->listBuff[i] = NULL;
@@ -42,7 +42,7 @@ void buffer_free(buffer b){
     free(b);
 }
 
-void read_to_buffer(buffer b, int c){
+void read_to_buffer(const buffer restrict b, const int c){
     b->buff[++b->indx % BUFFERSIZE] = c;
 
     if (b->indx >= MINMATCH){
@@ -53,7 +53,7 @@ void read_to_buffer(buffer b, int c){
     }
 }
 
-extern unsigned char * get_min_match(buffer b){
+extern unsigned char * get_min_match(const buffer restrict b){
     static unsigned char match[MINMATCH];
     if (b->indx >= MINMATCH + b->last_written){
         for (int i = 0; i < MINMATCH; i++)
@@ -63,14 +63,14 @@ extern unsigned char * get_min_match(buffer b){
     return NULL;
 }
 
-list search_match(buffer b, unsigned char * match){
+list search_match(const buffer restrict b, const unsigned char * restrict match){
     //get listIndx
     int listIndx = match[0] * 256 + match[1];
 
     //purge old list entries if necesary
     list old = b->listBuff[listIndx];
     list new;
-    if ((long long int)list_get(old, 0) <= b->indx - BUFFERSIZE){
+    if (list_length(old) && (long long int)list_get(old, 0) <= b->indx - BUFFERSIZE){
         //purge necessary
         new = list_init();
         int i = 1;
@@ -101,7 +101,7 @@ list search_match(buffer b, unsigned char * match){
     return matchList;
 }
 
-list expand_match(list l, buffer b){
+list expand_match(const list restrict l, const buffer restrict b){
     list new = list_init();
     for (int i = 0; i < list_length(l); i++){
         long long int offset = (long long int)list_get(l, i);
@@ -111,7 +111,7 @@ list expand_match(list l, buffer b){
     return new;
 }
 
-void write_match(list l, buffer b, FILE * f){
+void write_match(const list restrict l, const buffer restrict b, FILE * restrict f){
     long long int offset = (long long int)list_get(l, list_length(l)-1);
 
     fputc('\\', f);
@@ -123,7 +123,7 @@ void write_match(list l, buffer b, FILE * f){
     b->last_written = b->indx - 1;
 }
 
-void write_last_match(list l, buffer b, FILE * f){
+void write_last_match(const list restrict l, const buffer restrict b, FILE * restrict f){
     long long int offset = (long long int)list_get(l, list_length(l)-1);
 
     fputc('\\', f);
@@ -135,7 +135,7 @@ void write_last_match(list l, buffer b, FILE * f){
     b->last_written = b->indx;
 }
 
-void write_normal(buffer b, FILE * f){
+void write_normal(const buffer restrict b, FILE * restrict f){
     if (b->last_written < b->indx - MINMATCH){
         unsigned char c = b->buff[++b->last_written % BUFFERSIZE];
         fputc(c, f);
@@ -144,7 +144,7 @@ void write_normal(buffer b, FILE * f){
     }
 }
 
-void write_last(buffer b, FILE * f){
+void write_last(const buffer restrict b, FILE * restrict f){
     while (b->last_written < b->indx){
         unsigned char c = b->buff[++b->last_written % BUFFERSIZE];
         fputc(c, f);
@@ -157,7 +157,7 @@ void buffer_add(buffer b, int c);
 void buffer_write();
 void buffer_write_last();
 
-void sw_compress(FILE * source, FILE * dest){
+void sw_compress(FILE * restrict source, FILE * restrict dest){
     rewind(source);
     rewind(dest);
 
@@ -203,7 +203,7 @@ void sw_compress(FILE * source, FILE * dest){
     buffer_free(b);
 }
 
-void long_write(unsigned char b[BUFFERSIZE], long long int * indx, int len, int offset, FILE * dest){
+void long_write(unsigned char b[BUFFERSIZE], long long int * restrict indx, int len, int offset, FILE * restrict dest){
     for (int i = 0; i < len; i++){
         unsigned char c = b[(*indx - offset + 1) % BUFFERSIZE];
         b[++*indx % BUFFERSIZE] = c;
@@ -211,7 +211,7 @@ void long_write(unsigned char b[BUFFERSIZE], long long int * indx, int len, int 
     }
 }
 
-void sw_decompress(FILE * source, FILE * dest){
+void sw_decompress(FILE * restrict source, FILE * restrict dest){
     unsigned char b[BUFFERSIZE];
     long long int indx = -1;
     int c = fgetc(source);
