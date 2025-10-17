@@ -44,6 +44,7 @@ int are_equal(FILE * f1, FILE * f2){
 }
 
 int main(int len, char ** arr){
+    clock_t start = clock();
     char * original = "main.c";
     int alg = 1;
     if (len > 1)
@@ -96,12 +97,17 @@ int main(int len, char ** arr){
         out = fopen("compressed.temp", "rb");
         rewind(in);
         printf("Original entropy: %lf\n", measure_entropy(in));
-        printf("Compressed entropy: %lf\n", measure_entropy(out));
+        printf("Compressed entropy: %lf\n\n", measure_entropy(out));
 
         fclose(in);
         fclose(out);
 
         fileIndx++;
     }while (len > fileIndx);
+
+    clock_t end = clock();
+
+    printf("Total time: %lf\n", (end - start) / (double)CLOCKS_PER_SEC);
+
     return 0;
 }

@@ -13,7 +13,7 @@
 
 typedef struct{
     int count;
-    char transpose[20]; //todo fix lo de que el string de la línea 297 es demasiado grande
+    char transpose[20];
     char * original;
 }dictEntry;
 
@@ -294,8 +294,12 @@ void dict_decomp(FILE * source, FILE * dest){
         if(isBanned(c)){
             if(s != NULL){
                 dictEntry aux;
-                strcpy(aux.transpose, s);
-                int indx = list_bsearch(dictionary, &aux, dict_trans_compare);
+                int indx;
+                if (strlen(s) < sizeof(aux.transpose)){
+                    strcpy(aux.transpose, s);
+                    indx = list_bsearch(dictionary, &aux, dict_trans_compare);
+                }else
+                    indx = -1;
                 if(indx < 0){
                     fputs(s, dest);
                     free(s);

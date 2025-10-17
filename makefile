@@ -12,7 +12,7 @@ fast: CFLAGS = -O3
 fast: $(result)
 
 #compilar todos los objetos
-%.o: %.c %.h
+%.o: %.c %.h makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 .PHONY: clean massif leak run all final
@@ -31,4 +31,4 @@ massif: $(type)
 all: $(type)
 
 clean:
-	rm $(result) *.o *.temp massif.out.*
+	rm $(result) *.o *.temp massif.out.* || true
