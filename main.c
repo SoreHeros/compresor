@@ -75,7 +75,7 @@ void do_simple(char * fileName, int algIndx){
     in = fopen(compFileName, "rb");
     out = fopen("decompressed.temp", "wb");
 
-    printf("Decompressing compressed.temp...\n");
+    printf("Decompressing %s...\n", compFileName);
     t1 = clock();
     algorithms[algIndx].decompress(in, out);
     t2 = clock();
@@ -114,6 +114,7 @@ typedef struct fileStruct{
 void do_all(char * fileName){
     list fileList = list_init();
     fileStruct ofs = malloc(sizeof(struct fileStruct));
+    fileStruct best = ofs;
     strcpy(ofs->fileName, fileName);
     ofs->compTitme = 0;
     FILE * f1 = fopen(fileName, "r"), * f2;
@@ -140,6 +141,9 @@ void do_all(char * fileName){
             fclose(f1);
             fclose(f2);
 
+            if(tempfs->size < best->size)
+                best = tempfs;
+
             printf("%10li|%10.3lf|%10lf|%10.0lf|%10.0lf|   %s\n", tempfs->size, 100.0 - tempfs->size*100.0/ofs->size, tempfs->compTitme, ofs->size / tempfs->compTitme / 1024, (ofs->size - tempfs->size) / tempfs->compTitme / 1024, tempfs->fileName);
 
             if (tempfs->size < currfs->size)
@@ -148,6 +152,9 @@ void do_all(char * fileName){
                 free(tempfs);
         }
     }
+
+    printf("\nBest was: %s Size:%li Comp:%lf%%\n", best->fileName, best->size, 100.0 - best->size*100.0/ofs->size);
+
     while(list_length(fileList))
         free(list_pop(fileList));
     list_free(fileList);
