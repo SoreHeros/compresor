@@ -31,4 +31,4 @@ massif: $(type)
 all: $(type)
 
 clean:
-	rm $(result) *.o *.temp *.debug *.dict *.hfmn *.slwd *.diff massif.out.* || true
+	rm $(result) *.o *.tmp *.debug *.dict *.hfmn *.slwd *.diff massif.out.* || true

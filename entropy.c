@@ -5,22 +5,24 @@
 #include "entropy.h"
 #include <math.h>
 
-double measure_entropy(FILE * f){
-    rewind(f);
+#define BUFFSIZ 0x10000
 
-    //initial array of positions
-    unsigned long long int arr[256] = {0};
-
-    int c = fgetc(f);
+double measure_entropy(char * fileName){
+    FILE * f = fopen(fileName, "rb");
+    size_t arr[256] = {0};
+    unsigned char buff[BUFFSIZ];
 
     //count occurences
-    while (c != EOF){
-        arr[c]++;
-        c = fgetc(f);
-    }
+    size_t read;
+    do{
+        read = fread(buff, 1, BUFFSIZ, f);
+        for (size_t i = 0; i < read; i++){
+            arr[buff[i]]++;
+        }
+    }while (read == BUFFSIZ);
 
     //get size
-    unsigned long long int size = ftell(f);
+    size_t size = ftell(f);
 
     //get entropy
     double ret = 0;
@@ -30,5 +32,6 @@ double measure_entropy(FILE * f){
             ret -= (double)arr[i]/size * log2((double)arr[i]/size);
     }
 
+    fclose(f);
     return ret;
 }

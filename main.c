@@ -15,52 +15,77 @@
 #include "sliding_window.h"
 #include "entropy.h"
 
+#define BUFFSIZ 0x10000
+
 struct{
     char name[16];
     char extension[8];
-    void (*compress)(FILE * source, FILE * dest);
-    void (*decompress)(FILE * source, FILE * dest);
+    void (*compress)(char * source, char * dest);
+    void (*decompress)(char * source, char * dest);
 }algorithms[] = {
-        {"dictionary", ".dict", dict_comp, dict_decomp},
+        //{"dictionary", ".dict", dict_comp, dict_decomp},
         {"huffman", ".hfmn", huffman_comp, huffman_decomp},
-        {"sliding window", ".slwd", sw_compress, sw_decompress},
-        //{"difference", ".diff", difference_comp, difference_decomp}
+        //{"sliding window", ".slwd", sw_compress, sw_decompress},
+        {"difference", ".diff", difference_comp, difference_decomp}
     };
 
-int are_equal(FILE * f1, FILE * f2){
-    rewind(f1);
-    rewind(f2);
-    int c1, c2;
+int are_equal(char * filename1, char * filename2){
+    FILE * f1 = fopen(filename1, "rb"), * f2 = fopen(filename2, "rb");
+    char buff1[BUFFSIZ], buff2[BUFFSIZ];
+
+    size_t read1, read2;
     do{
-        c1 = fgetc(f1);
-        c2 = fgetc(f2);
-    }while(c1 == c2 && c1 != EOF && c2 != EOF);
+        read1 = fread(buff1, 1, BUFFSIZ, f1);
+        read2 = fread(buff2, 1, BUFFSIZ, f2);
+        for (size_t i = 0; i < read1 && i < read2; i++){
+            if (buff1[i] != buff2[i]){
+                //files are not equal
+                printf("ERROR AT CHARACTER %li f1:%c(%i) f2:%c(%i)\n", ftell(f1), buff1[i], buff1[i], buff2[i], buff2[i]);
+                fclose(f1);
+                fclose(f2);
+                return 0;
+            }
+        }
+    }while (read1 == BUFFSIZ && read2 == BUFFSIZ);
 
-    if(c1 == EOF && c2 == EOF)
-        return 1;
+    if (read1 != read2){
+        //files are not equal
+        printf("ERROR FILES HAVE DIFFERENT LENGHTS\n");
+        fclose(f1);
+        fclose(f2);
+        return 0;
+    }
 
-    printf("ERROR AT CHARACTER %li f1:%c(%i) f2:%c(%i)\n", ftell(f1), c1, c1, c2, c2);
-    return 0;
+    fclose(f1);
+    fclose(f2);
+    return 1;
 }
 
 void do_simple(char * fileName, int algIndx){
     if (algIndx < 0 || (unsigned long)algIndx >= sizeof(algorithms) / sizeof(algorithms[0]))
         return;
     char * compFileName = strcat(realloc(strdup(fileName), strlen(fileName) + strlen(algorithms[algIndx].extension) + 1), algorithms[algIndx].extension);
-    FILE * in = fopen(fileName, "rb");
-    FILE * out = fopen(compFileName, "wb");
+    //FILE * in = fopen(fileName, "rb");
+    //FILE * out = fopen(compFileName, "wb");
 
     printf("Compressing %s...\n", fileName);
     clock_t t1 = clock();
-    algorithms[algIndx].compress(in, out);
+    algorithms[algIndx].compress(fileName, compFileName);
     clock_t t2 = clock();
     double deltaT = (t2 - t1) / (double)CLOCKS_PER_SEC;
     printf("Compressed in %lf s\n", deltaT);
+
+
+    FILE * in = fopen(fileName, "rb");
+    FILE * out = fopen(compFileName, "rb");
 
     fseek(in, 0, SEEK_END);
     fseek(out, 0, SEEK_END);
 
     long input_size = ftell(in), output_size = ftell(out);
+
+    fclose(in);
+    fclose(out);
 
     printf("%14s:\n", algorithms[algIndx].name);
     printf(" Original size: %10li Bytes\n", input_size);
@@ -69,39 +94,22 @@ void do_simple(char * fileName, int algIndx){
     printf("   Total speed: %10.0lf kB/s\n", input_size / deltaT / 1024);
     printf("    Diff speed: %10.0lf kB/s\n", (input_size - output_size) / deltaT / 1024);
 
-    fclose(in);
-    fclose(out);
-
-    in = fopen(compFileName, "rb");
-    out = fopen("decompressed.temp", "wb");
-
     printf("Decompressing %s...\n", compFileName);
     t1 = clock();
-    algorithms[algIndx].decompress(in, out);
+    algorithms[algIndx].decompress(compFileName, "decompressed.tmp");
     t2 = clock();
     deltaT = (t2 - t1) / (double)CLOCKS_PER_SEC;
     printf("Decompressed in %lf\n", deltaT);
     printf("   Total speed: %10.0lf kB/s\n", input_size / deltaT / 1024);
 
-    fclose(out);
-    fclose(in);
-
-    in = fopen(fileName, "rb");
-    out = fopen("decompressed.temp", "rb");
-
-    if(are_equal(in, out))
+    if(are_equal(fileName, "decompressed.tmp"))
         printf("files are equal\n");
     else
         printf("files are NOT equal\n");
 
-    fclose(out);
-    out = fopen(compFileName, "rb");
-    rewind(in);
-    printf("  Original entropy: %lf\n", measure_entropy(in));
-    printf("Compressed entropy: %lf\n\n", measure_entropy(out));
+    printf("  Original entropy: %lf\n", measure_entropy(fileName));
+    printf("Compressed entropy: %lf\n\n", measure_entropy(compFileName));
 
-    fclose(in);
-    fclose(out);
     free(compFileName);
 }
 
@@ -117,10 +125,10 @@ void do_all(char * fileName){
     fileStruct best = ofs;
     strcpy(ofs->fileName, fileName);
     ofs->compTitme = 0;
-    FILE * f1 = fopen(fileName, "r"), * f2;
-    fseek(f1, 0, SEEK_END);
-    ofs->size = ftell(f1);
-    fclose(f1);
+    FILE * f = fopen(fileName, "r");
+    fseek(f, 0, SEEK_END);
+    ofs->size = ftell(f);
+    fclose(f);
     printf("   Size   |   Comp   |   Time   |   Speed  |  (Diff)  |   Name\n");
     printf("%10li|%10.3lf|%10lf|%10.0lf|%10.0lf|   %s\n", ofs->size, 0.0, 0.0, 0.0, 0.0, ofs->fileName);
     list_append(fileList, ofs);
@@ -130,16 +138,14 @@ void do_all(char * fileName){
             fileStruct tempfs = malloc(sizeof(struct fileStruct));
             strcpy(tempfs->fileName, currfs->fileName);
             strcat(tempfs->fileName, algorithms[algIndx].extension);
-            f1 = fopen(currfs->fileName, "rb");
-            f2 = fopen(tempfs->fileName, "wb");
             clock_t start = clock();
-            algorithms[algIndx].compress(f1, f2);
+            algorithms[algIndx].compress(currfs->fileName, tempfs->fileName);
             clock_t end = clock();
             tempfs->compTitme = currfs->compTitme + (end - start) / (double)CLOCKS_PER_SEC;
-            fseek(f2, 0, SEEK_END);
-            tempfs->size = ftell(f2);
-            fclose(f1);
-            fclose(f2);
+            f = fopen(tempfs->fileName, "rb");
+            fseek(f, 0, SEEK_END);
+            tempfs->size = ftell(f);
+            fclose(f);
 
             if(tempfs->size < best->size)
                 best = tempfs;

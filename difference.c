@@ -4,31 +4,45 @@
 
 #include "difference.h"
 
-void difference_comp(FILE * source, FILE * dest){
-    rewind(source);
-    rewind(dest);
+#define BUFFSIZ 0x10000
 
+void difference_comp(char * source, char * dest){
+    FILE * in = fopen(source, "rb"), * out = fopen(dest, "wb");
+    char inbuff[BUFFSIZ], outbuff[BUFFSIZ];
 
-    int c = fgetc(source);
-    int prev = 0;
+    size_t read;
+    char prev = 0;
 
-    while(c != EOF){
-        fputc(c - prev, dest);
-        prev = c;
-        c = fgetc(source);
-    }
+    do{
+        read = fread(inbuff, 1, BUFFSIZ, in);
+        outbuff[0] = inbuff[0] - prev;
+        for (size_t i = 1; i < read; i++){
+            outbuff[i] = inbuff[i] - inbuff[i-1];
+        }
+        prev = inbuff[BUFFSIZ - 1];
+        fwrite(outbuff, 1, read, out);
+    }while (read == BUFFSIZ);
+    fclose(in);
+    fclose(out);
 }
 
-void difference_decomp(FILE * source, FILE * dest){
-    rewind(source);
-    rewind(dest);
+void difference_decomp(char * source, char * dest){
+    FILE * in = fopen(source, "rb"), * out = fopen(dest, "wb");
+    char inbuff[BUFFSIZ], outbuff[BUFFSIZ];
 
-    int diff = fgetc(source);
-    int carry = 0;
+    size_t read;
+    char prev = 0;
 
-    while (diff != EOF){
-        carry += diff;
-        fputc(carry & 0xff, dest);
-        diff = fgetc(source);
-    }
+    do{
+        read = fread(inbuff, 1, BUFFSIZ, in);
+        outbuff[0] = inbuff[0] + prev;
+        for (size_t i = 1; i < read; i++){
+            outbuff[i] = inbuff[i] + outbuff[i-1];
+        }
+        prev = outbuff[BUFFSIZ - 1];
+        fwrite(outbuff, 1, read, out);
+    }while (read == BUFFSIZ);
+
+    fclose(in);
+    fclose(out);
 }

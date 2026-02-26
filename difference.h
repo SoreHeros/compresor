@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-void difference_comp(FILE * source, FILE * dest);
-void difference_decomp(FILE * source, FILE * dest);
+void difference_comp(char * source, char * dest);
+void difference_decomp(char * source, char * dest);
 
 #endif //COMPRESOR_DIFFERENCE_H

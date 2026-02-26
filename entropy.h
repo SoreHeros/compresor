@@ -7,6 +7,6 @@
 
 #include <stdio.h>
 
-double measure_entropy(FILE *);
+double measure_entropy(char * fileName);
 
 #endif //COMPRESOR_ENTROPY_H
