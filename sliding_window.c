@@ -157,12 +157,12 @@ void buffer_add(buffer b, int c);
 void buffer_write();
 void buffer_write_last();
 
-void sw_compress(FILE * restrict source, FILE * restrict dest){
-    rewind(source);
-    rewind(dest);
+void sw_compress(char * source, char * dest){
+    FILE * in = fopen(source, "rb"), * out = fopen(dest, "wb");
+
 
     buffer b = buffer_init();
-    int c = fgetc(source);
+    int c = fgetc(in);
     list l = NULL;
     int len = 0;
     while(c != EOF){
@@ -171,7 +171,7 @@ void sw_compress(FILE * restrict source, FILE * restrict dest){
             list temp = expand_match(l, b);
             len++;
             if (!list_length(temp) || len == LENGTHSIZE){
-                write_match(l, b, dest);
+                write_match(l, b, out);
                 list_free(l);
                 list_free(temp);
                 l = NULL;
@@ -190,17 +190,19 @@ void sw_compress(FILE * restrict source, FILE * restrict dest){
                     l = NULL;
                 }
             }
-            write_normal(b, dest);
+            write_normal(b, out);
         }
-        c = fgetc(source);
+        c = fgetc(in);
     }
     if (l != NULL){
-        write_last_match(l, b, dest);
+        write_last_match(l, b, out);
         list_free(l);
         l = NULL;
     }else
-        write_last(b, dest);
+        write_last(b, out);
     buffer_free(b);
+    fclose(in);
+    fclose(out);
 }
 
 void long_write(unsigned char b[BUFFERSIZE], long long int * restrict indx, int len, int offset, FILE * restrict dest){
@@ -211,29 +213,32 @@ void long_write(unsigned char b[BUFFERSIZE], long long int * restrict indx, int 
     }
 }
 
-void sw_decompress(FILE * restrict source, FILE * restrict dest){
+void sw_decompress(char * source, char * dest){
+    FILE * in = fopen(source, "rb"), * out = fopen(dest, "wb");
     unsigned char b[BUFFERSIZE];
     long long int indx = -1;
-    int c = fgetc(source);
+    int c = fgetc(in);
     while (c != EOF){
         if (c == '\\'){
-            int len = fgetc(source);
+            int len = fgetc(in);
             if (len == 0){
                 //caso de escribir '\'
                 b[++indx % BUFFERSIZE] = '\\';
-                fputc('\\', dest);
+                fputc('\\', out);
             }else{
-                int offset = fgetc(source);
+                int offset = fgetc(in);
                 if (len & 0x80){
                     len &= ~0x80;
-                    offset |= fgetc(source) << 8;
+                    offset |= fgetc(in) << 8;
                 }
-                long_write(b, &indx, len, offset, dest);
+                long_write(b, &indx, len, offset, out);
             }
         }else{
             b[++indx % BUFFERSIZE] = c;
-            fputc(c, dest);
+            fputc(c, out);
         }
-        c = fgetc(source);
+        c = fgetc(in);
     }
+    fclose(in);
+    fclose(out);
 }

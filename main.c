@@ -23,15 +23,29 @@ struct{
     void (*compress)(char * source, char * dest);
     void (*decompress)(char * source, char * dest);
 }algorithms[] = {
-        //{"dictionary", ".dict", dict_comp, dict_decomp},
+        {"dictionary", ".dict", dict_comp, dict_decomp},
         {"huffman", ".hfmn", huffman_comp, huffman_decomp},
-        //{"sliding window", ".slwd", sw_compress, sw_decompress},
+        {"sliding window", ".slwd", sw_compress, sw_decompress},
         {"difference", ".diff", difference_comp, difference_decomp}
     };
 
 int are_equal(char * filename1, char * filename2){
     FILE * f1 = fopen(filename1, "rb"), * f2 = fopen(filename2, "rb");
     char buff1[BUFFSIZ], buff2[BUFFSIZ];
+
+    if (f1 == NULL){
+        printf("ERROR FILE %s COULDN'T BE OPENED\n", filename1);
+        if (f2 != NULL)
+            fclose(f2);
+        return 0;
+    }
+
+    if (f2 == NULL){
+        printf("ERROR FILE %s COULDN'T BE OPENED\n", filename2);
+        if (f1 != NULL)
+            fclose(f1);
+        return 0;
+    }
 
     size_t read1, read2;
     do{
@@ -40,7 +54,7 @@ int are_equal(char * filename1, char * filename2){
         for (size_t i = 0; i < read1 && i < read2; i++){
             if (buff1[i] != buff2[i]){
                 //files are not equal
-                printf("ERROR AT CHARACTER %li f1:%c(%i) f2:%c(%i)\n", ftell(f1), buff1[i], buff1[i], buff2[i], buff2[i]);
+                printf("ERROR AT CHARACTER %li f1:%c(%i) f2:%c(%i)\n", ftell(f1) - BUFFSIZ + i, buff1[i], buff1[i], buff2[i], buff2[i]);
                 fclose(f1);
                 fclose(f2);
                 return 0;
@@ -166,11 +180,14 @@ void do_all(char * fileName){
     list_free(fileList);
 }
 
+//todo file validation
 int main(int len, char ** arr){
     clock_t start = clock();
     char * fileName = "main.c";
     int alg = -1;
     int fileIndx = 2;
+
+
 
     if (len > 1){
         if(!strcmp(arr[1], "-all"))

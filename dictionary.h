@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-void dict_comp(FILE * source, FILE * dest);
-void dict_decomp(FILE * source, FILE * dest);
+void dict_comp(char * source, char * dest);
+void dict_decomp(char * in, char * out);
 
 #endif //DICTIONARY_H

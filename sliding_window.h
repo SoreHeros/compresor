@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-void sw_compress(FILE * source, FILE * dest);
-void sw_decompress(FILE * source, FILE * dest);
+void sw_compress(char * in, char * out);
+void sw_decompress(char * in, char * out);
 
 #endif //COMPRESOR_SLIDING_WINDOW_H

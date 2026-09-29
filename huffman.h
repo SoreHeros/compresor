@@ -6,7 +6,7 @@
 #define HUFFMAN_H
 
 #include <stdio.h>
-void huffman_comp(FILE * source, FILE * dest);
-void huffman_decomp(FILE * source, FILE * dest);
+void huffman_comp(char * source, char * dest);
+void huffman_decomp(char * source, char * dest);
 
 #endif //HUFFMAN_H

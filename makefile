@@ -8,7 +8,7 @@ type=$(result)
 $(result): $(main) $(OBJS)
 	$(CC) $(CFLAGS) -o $(result) $(main) $(OBJS) -lm
 
-fast: CFLAGS = -O3
+fast: CFLAGS = -O3 -g
 fast: $(result)
 
 #compilar todos los objetos
