@@ -34,6 +34,7 @@ void free_hufftree(hufftree t){
 }
 
 //todo fix
+//fix que?????
 void print_tree_and_size(FILE * f, list depthList, size_t size){
     {
         //se imprimirá en grupos de 7 bits y el primer bit dirá si es el último bloque del grupo o no, siempre debe de haber al menos un bloque que sea el último(bit 0), se utilizarán los 2 primeros bits del siguiente byte para decir el tamaño
@@ -317,6 +318,10 @@ size_t read_tree(int depthArr[64], unsigned char charArr[256], FILE * in){
     }while (charCount < totalCount);
 
     depthArr[depth] = charCount;
+
+    //fill rest with 0
+    for (int i = depth+1; i < 64; i++)
+        depthArr[i] = 0;
 
     //debug print
     //printf("depthArr: ");
