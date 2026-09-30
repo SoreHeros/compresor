@@ -332,9 +332,10 @@ size_t read_tree(int depthArr[64], unsigned char charArr[256], FILE * in){
 }
 
 lookup * do_lookup(int depthArr[64], unsigned char charArr[256]){
-    short int len = 256, lindex = 0;
+    short int len = 256;
     lookup * l = calloc(len, sizeof(lookup));
 
+    //fill bits
     for (int bits = 1, carry = 0, indx = 0; bits <= 8; bits++){
         if (depthArr[bits]){
             for (int i = depthArr[bits-1]; i < depthArr[bits]; i++){
@@ -352,6 +353,21 @@ lookup * do_lookup(int depthArr[64], unsigned char charArr[256]){
         carry <<= 1;
     }
 
+    //fill index
+    for (int i = 0; i < len; i++)
+        if (!l[i].bits){
+            short int index = 0;
+            int bits = i, depth = 0;
+
+            do{
+                index = 2 * index - depthArr[depth] + (bits & 0b1);
+                depth++;
+                bits >>= 1;
+            }while (depth < 8);
+            l[i].indx = index;
+        }
+
+
     return l;
 }
 
@@ -362,12 +378,11 @@ void huffman_decomp(char * source, char * dest){
     size_t size;
     lookup * l;
 
-    {//read tree and make lookup table
-        int depthArr[64];
-        unsigned char charArr[256];
-        size = read_tree(depthArr, charArr, in);
-        l = do_lookup(depthArr, charArr);
-    }
+    //read tree and make lookup table
+    int depthArr[64];
+    unsigned char charArr[256];
+    size = read_tree(depthArr, charArr, in);
+    l = do_lookup(depthArr, charArr);
 
     //decompress
     leftover = size;
@@ -394,7 +409,6 @@ void huffman_decomp(char * source, char * dest){
             count -= l[bits & 0xff].bits;
             bits >>= l[bits & 0xff].bits;
         }else{
-            //todo fix index and non lookup
             index = l[bits & 0xff].indx;
             bits >>= 8;
             count -= 8;
@@ -409,13 +423,13 @@ void huffman_decomp(char * source, char * dest){
                     }
                     bits = inBuff[reading++];
                 }
-                //index = 2 * index - depthArr[depth] + (bits & 0b1);
+                index = 2 * index - depthArr[depth] + (bits & 0b1);
                 depth++;
                 bits >>= 1;
                 count--;
-            }while (0 /*index >= depthArr[depth]*/);
+            }while (index >= depthArr[depth]);
 
-            //c = charArr[index];
+            c = charArr[index];
         }
 
         if (writing >= BUFFSIZ){
