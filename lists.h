@@ -22,6 +22,7 @@ void list_ordered_insert(list l, void * element, int (*comparator)(const void *,
 void * list_get(list l, int pos);
 void list_set(list l, int pos, void * element);
 int list_search(list l, void * element, int (*comparator)(const void *, const void *));
+int list_exists(list l, void * element);
 int list_bsearch(list l, void * element, int (*comparator)(const void *, const void *));
 int list_length(list l);
 

@@ -109,6 +109,13 @@ int list_search(list l, void * element, int (* comparator)(const void *, const v
     return -1;
 }
 
+int list_exists(list l, void * element){
+    for (int i = 0; i < l->list_len; i++)
+        if (l->data[i] == element)
+            return 1;
+    return 0;
+}
+
 int list_bsearch(list l, void * element, int (* comparator)(const void *, const void *)){
 
     if (l->list_len == 0)

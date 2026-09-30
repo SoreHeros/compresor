@@ -26,7 +26,7 @@ struct{
         {"dictionary", ".dict", dict_comp, dict_decomp},
         {"huffman", ".hfmn", huffman_comp, huffman_decomp},
         {"sliding window", ".slwd", sw_compress, sw_decompress},
-        {"difference", ".diff", difference_comp, difference_decomp}
+        //{"difference", ".diff", difference_comp, difference_decomp}
     };
 
 int are_equal(char * filename1, char * filename2){
@@ -133,21 +133,31 @@ typedef struct fileStruct{
     double compTitme;
 } * fileStruct;
 
+int file_comparator(const void * a, const void * b){
+    if (((fileStruct)a)->size < ((fileStruct)b)->size)
+        return 1;
+    else if (((fileStruct)a)->size > ((fileStruct)b)->size)
+        return -1;
+    else
+        return 0;
+}
+
 void do_all(char * fileName){
     list fileList = list_init();
     fileStruct ofs = malloc(sizeof(struct fileStruct));
     fileStruct best = ofs;
+    int best_iter = 0;
     strcpy(ofs->fileName, fileName);
     ofs->compTitme = 0;
     FILE * f = fopen(fileName, "r");
     fseek(f, 0, SEEK_END);
     ofs->size = ftell(f);
     fclose(f);
-    printf("   Size   |   Comp   |   Time   |   Speed  |  (Diff)  |   Name\n");
-    printf("%10li|%10.3lf|%10lf|%10.0lf|%10.0lf|   %s\n", ofs->size, 0.0, 0.0, 0.0, 0.0, ofs->fileName);
-    list_append(fileList, ofs);
-    for (int i = 0; i < list_length(fileList); i++){
-        fileStruct currfs = list_get(fileList, i);
+    printf(" i|   Size   |   Comp   |   Time   |   Speed  |  (Diff)  |   Name\n");
+    printf(" 0|%10li|%10.3lf|%10lf|%10.0lf|%10.0lf|   %s\n", ofs->size, 0.0, 0.0, 0.0, 0.0, ofs->fileName);
+    list_ordered_insert(fileList, ofs, file_comparator);
+    for (int i = 0; list_length(fileList); i++){
+        fileStruct currfs = list_pop(fileList);
         for (int algIndx = 0; (unsigned long)algIndx < sizeof(algorithms) / sizeof(algorithms[0]); algIndx++){
             fileStruct tempfs = malloc(sizeof(struct fileStruct));
             strcpy(tempfs->fileName, currfs->fileName);
@@ -161,20 +171,35 @@ void do_all(char * fileName){
             tempfs->size = ftell(f);
             fclose(f);
 
-            if(tempfs->size < best->size)
+            if(tempfs->size < best->size){
+                if (best != currfs && best != ofs && !list_exists(fileList, best)){
+                    remove(best->fileName);
+                    free(best);
+                }
                 best = tempfs;
+                best_iter = i;
+            }
 
-            printf("%10li|%10.3lf|%10lf|%10.0lf|%10.0lf|   %s\n", tempfs->size, 100.0 - tempfs->size*100.0/ofs->size, tempfs->compTitme, ofs->size / tempfs->compTitme / 1024, (ofs->size - tempfs->size) / tempfs->compTitme / 1024, tempfs->fileName);
+            printf("%2i|%10li|%10.3lf|%10lf|%10.0lf|%10.0lf|   %s\n",i, tempfs->size, 100.0 - tempfs->size*100.0/ofs->size, tempfs->compTitme, ofs->size / tempfs->compTitme / 1024, (ofs->size - (double)tempfs->size) / tempfs->compTitme / 1024, tempfs->fileName);
 
             if (tempfs->size < currfs->size)
-                list_append(fileList, tempfs);
-            else
+                list_ordered_insert(fileList, tempfs, file_comparator);
+            else{
+                remove(tempfs->fileName);
                 free(tempfs);
+            }
+        }
+        if (currfs != best && currfs != ofs){
+            remove(currfs->fileName);
+            free(currfs);
         }
     }
 
-    printf("\nBest was: %s Size:%li Comp:%lf%%\n", best->fileName, best->size, 100.0 - best->size*100.0/ofs->size);
+    printf("\nBest was: %s Size:%li Comp:%lf%% Iter:%i\n", best->fileName, best->size, 100.0 - best->size*100.0/ofs->size, best_iter);
 
+    if (best != ofs)
+        free(best);
+    free(ofs);
     while(list_length(fileList))
         free(list_pop(fileList));
     list_free(fileList);

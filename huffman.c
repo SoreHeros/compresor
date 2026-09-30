@@ -185,7 +185,7 @@ void build_replArr(list depthList, repl replarr[256]){
     }
 }
 
-//todo separate into functs
+//todo separate into functs fix archivo de 1 de longitud
 void huffman_comp(char * source, char * dest){
     FILE * in = fopen(source, "rb"), * out = fopen(dest, "wb");
     unsigned char inBuff[BUFFSIZ], outBuff[BUFFSIZ];
