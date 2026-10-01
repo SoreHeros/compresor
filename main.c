@@ -113,7 +113,7 @@ void do_simple(char * fileName, int algIndx){
     algorithms[algIndx].decompress(compFileName, "decompressed.tmp");
     t2 = clock();
     deltaT = (t2 - t1) / (double)CLOCKS_PER_SEC;
-    printf("Decompressed in %lf\n", deltaT);
+    printf("Decompressed in %lf seconds\n", deltaT);
     printf("   Total speed: %10.0lf kB/s\n", input_size / deltaT / 1024);
 
     if(are_equal(fileName, "decompressed.tmp"))
@@ -154,9 +154,9 @@ void do_all(char * fileName){
     ofs->size = ftell(f);
     fclose(f);
     printf(" i|   Size   |   Comp   |   Time   |   Speed  |  (Diff)  |   Name\n");
-    printf(" 0|%10li|%10.3lf|%10lf|%10.0lf|%10.0lf|   %s\n", ofs->size, 0.0, 0.0, 0.0, 0.0, ofs->fileName);
+    printf(" 0|%10li|%10.5lf|%10.5lf|%10.0lf|%10.0lf|   %s\n", ofs->size, 0.0, 0.0, 0.0, 0.0, ofs->fileName);
     list_ordered_insert(fileList, ofs, file_comparator);
-    for (int i = 0; list_length(fileList); i++){
+    for (int i = 1; list_length(fileList); i++){
         fileStruct currfs = list_pop(fileList);
         for (int algIndx = 0; (unsigned long)algIndx < sizeof(algorithms) / sizeof(algorithms[0]); algIndx++){
             fileStruct tempfs = malloc(sizeof(struct fileStruct));
@@ -180,7 +180,7 @@ void do_all(char * fileName){
                 best_iter = i;
             }
 
-            printf("%2i|%10li|%10.3lf|%10lf|%10.0lf|%10.0lf|   %s\n",i, tempfs->size, 100.0 - tempfs->size*100.0/ofs->size, tempfs->compTitme, ofs->size / tempfs->compTitme / 1024, (ofs->size - (double)tempfs->size) / tempfs->compTitme / 1024, tempfs->fileName);
+            printf("%2i|%10li|%10.5lf|%10.5lf|%10.0lf|%10.0lf|   %s\n",i, tempfs->size, 100.0 - tempfs->size*100.0/ofs->size, tempfs->compTitme, ofs->size / tempfs->compTitme / 1024, (ofs->size - (double)tempfs->size) / tempfs->compTitme / 1024, tempfs->fileName);
 
             if (tempfs->size < currfs->size)
                 list_ordered_insert(fileList, tempfs, file_comparator);
@@ -205,6 +205,43 @@ void do_all(char * fileName){
     list_free(fileList);
 }
 
+void do_decomp(char * fileName){
+    clock_t start = clock();
+    char * currFileName = strdup(fileName);
+    while (1){
+        //min fileName length
+        if (strlen(currFileName)<5)
+            break;
+
+        //check algorithm
+        int alg = -1;
+        for (int algIndx = 0; (unsigned long)algIndx < sizeof(algorithms) / sizeof(algorithms[0]); algIndx++)
+            if (!strcmp(&currFileName[strlen(currFileName)-5], algorithms[algIndx].extension)){
+                alg = algIndx;
+                break;
+            }
+
+        //exit if none are found
+        if (alg == -1)
+            break;
+
+        //decompress
+        char * tmp = strdup(currFileName);
+        tmp[strlen(tmp)-5] = '\0';
+        algorithms[alg].decompress(currFileName, tmp);
+
+        //delete if necesary
+        if (strcmp(currFileName, fileName) != 0)
+            remove(currFileName);
+
+        free(currFileName);
+        currFileName = tmp;
+    }
+    clock_t end = clock();
+    printf("%s decompressed to %s in %lf seconds\n", fileName, currFileName, (end - start) / (double) CLOCKS_PER_SEC);
+    free(currFileName);
+}
+
 //todo file validation
 int main(int len, char ** arr){
     clock_t start = clock();
@@ -217,6 +254,8 @@ int main(int len, char ** arr){
     if (len > 1){
         if(!strcmp(arr[1], "-all"))
             alg = -1;
+        else if(!strcmp(arr[1], "-decomp"))
+            alg = -2;
         else if(arr[1][0] == '-')
             alg = atoi(&arr[1][1]);
         else
@@ -229,6 +268,8 @@ int main(int len, char ** arr){
 
         if(alg == -1)
             do_all(fileName);
+        else if (alg == -2)
+            do_decomp(fileName);
         else
             do_simple(fileName, alg);
 
