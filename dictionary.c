@@ -4,12 +4,304 @@
 
 #include "dictionary.h"
 
+#include <ctype.h>
 #include <iso646.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <wchar.h>
 
 #include "lists.h"
+/*
+#define MAXDEPTH 8
+
+
+typedef struct trie{
+    unsigned long amount;
+    union{
+        struct trie* children[256];
+        unsigned long leafAmount[256];
+    };
+}trie;
+
+void trie_free(trie * t){
+    static int depth = 0;
+    depth++;
+    if (depth < MAXDEPTH)
+        for (int i = 0; i < 256; i++)
+            if (t->children[i] != NULL)
+                continue;
+                //trie_free(t->children[i]);
+    depth--;
+    free(t);
+}
+
+trie * trie_init(){
+    trie * t = malloc(sizeof(trie));
+    t->amount = 0;
+    for (int i = 0; i < 256; i++)
+        t->children[i] = NULL;
+    return t;
+}
+
+void rec_print(trie * t){
+    static int depth = 0;
+    depth++;
+    if (depth < MAXDEPTH){
+        for (int i = 0; i < 256; i++)
+            if (t->children[i] != NULL){
+                if (!isprint(i) || i == ' ')
+                    printf("%*c%lu \\%i\n", depth * 3, ' ', t->children[i]->amount, i);
+                else
+                    printf("%*c%lu %c\n", depth * 3, ' ', t->children[i]->amount, i);
+                rec_print(t->children[i]);
+            }
+    }else{
+        for (int i = 0; i < 256; i++)
+            if (t->leafAmount[i] > 0){
+                if (!isprint(i) || i == ' ')
+                    printf("%*c%lu \\%i\n", depth * 3, ' ', t->leafAmount[i], i);
+                else
+                    printf("%*c%lu %c\n", depth * 3, ' ', t->leafAmount[i], i);
+            }
+    }
+    depth--;
+}
+
+void reduce(trie * reducedTrieRoot, trie * basicTrieRoot){
+    static int depth = 0;
+
+    depth++;
+    for (int i = 0; i < 256; i++){
+        if (basicTrieRoot->children[i] != NULL){
+            if (depth < MAXDEPTH){
+                if (basicTrieRoot->children[i]->amount <= 1)
+                    continue;
+                reducedTrieRoot->children[i] = trie_init();
+                reducedTrieRoot->children[i]->amount = basicTrieRoot->children[i]->amount;
+                if (reducedTrieRoot->amount == reducedTrieRoot->children[i]->amount)
+                    reducedTrieRoot->amount = 0;
+                reduce(reducedTrieRoot->children[i], basicTrieRoot->children[i]);
+            }else{
+                if (basicTrieRoot->leafAmount[i] <= 1)
+                    continue;
+                reducedTrieRoot->leafAmount[i] = basicTrieRoot->leafAmount[i];
+                if (reducedTrieRoot->amount == reducedTrieRoot->leafAmount[i])
+                    reducedTrieRoot->amount = 0;
+            }
+        }
+    }
+    depth--;
+    if (depth <= 1)
+        reducedTrieRoot->amount = 0;
+}
+
+int search_best(trie * t, char * bestWord, int substLen){
+    static int depth = 0;
+    static long bestPotential = 0;
+    static char currWord[MAXDEPTH] = {'\0'};
+    static int bestLen;
+    if (depth <= 0){
+        bestPotential = 0;
+        bestLen = 0;
+        for (int i = 0; i < MAXDEPTH; i++){
+            bestWord[i] = '\0';
+            currWord[i] = '\0';
+        }
+    }
+    depth++;
+    for (int i = 0; i < 256; i++){
+        if (t->children[i] != NULL){
+            currWord[depth-1] = i;
+            if (depth < MAXDEPTH){
+                if (t->children[i]->amount){
+                    long potential = (t->children[i]->amount - 1) * (depth - substLen) - 2 - substLen;
+                    if (potential > bestPotential || (potential >= bestPotential && depth < bestLen) ){
+                        bestPotential = potential;
+                        bestLen = depth;
+                        memcpy(bestWord, currWord, MAXDEPTH);
+                    }
+                }
+                search_best(t->children[i], bestWord, substLen);
+            }else{
+                long potential = (t->leafAmount[i] - 1) * (depth - substLen) - 2 - substLen;
+                if (potential > bestPotential){
+                    bestPotential = potential;
+                    bestLen = depth;
+                    memcpy(bestWord, currWord, MAXDEPTH);
+                }
+            }
+            currWord[depth-1] = '\0';
+        }
+    }
+    depth--;
+    return bestLen;
+}
+
+void rec_remove(trie * t, char * word, int wordLen, unsigned long amount){
+    static int startRemove = 0;
+    static int depth = 0;
+    if (depth == 0)
+        startRemove = 0;
+    depth++;
+    if (depth < wordLen){
+        rec_remove(t->children[word[depth-1]], word, wordLen, amount);
+        if (startRemove){
+            t->children[word[depth-1]] = NULL;
+            if (t->amount){
+                t->amount -= amount;
+                if (t->amount <= 1)
+                    trie_free(t);
+                else{
+                    startRemove = 0;
+
+                    //contr si tiene más de un hijo
+                    int children = 0;
+                    for (int i = 0; i < 256; i++){
+                        if (t->children[i] != NULL)
+                            if (children++)
+                                break;
+                    }
+                    if (children <= 1)
+                        t->amount = 0;
+                }
+            }
+        }
+    }else{
+        startRemove = 1;
+        if (depth < MAXDEPTH){
+            trie_free(t);
+        }
+    }
+    depth--;
+}
+
+void remove_word(trie * t, char word[MAXDEPTH], int wordLen){
+    static int depth = 0;
+    trie * aux = t;
+    for (int i = 0; i < wordLen && i < MAXDEPTH; i++)
+        aux = aux->children[word[i]];
+
+    unsigned long amount = 0;
+    if (wordLen == MAXDEPTH)
+        amount = (unsigned long)aux;
+    else
+        amount = aux->amount;
+
+    rec_remove(t, word, wordLen, amount);
+}
+
+void dict_comp(char * source, char * dest){
+    //open files
+    FILE * in = fopen(source, "rb"), * out = fopen(dest, "wb");
+
+    //exit if null
+    if (in == NULL || out == NULL){
+        fclose(in);
+        fclose(out);
+        return;
+    }
+
+    //inits
+    size_t currByte = 0;
+    trie * basicTrieRoot = trie_init();
+    trie * tries[MAXDEPTH];
+    int c;
+
+    //read MAXDEPTH first bytes
+    for (currByte = 0; currByte < MAXDEPTH; currByte++){
+        //read byte
+        c = fgetc(in);
+
+        //exit if end
+        if (c == EOF){
+            fclose(in);
+            fclose(out);
+            trie_free(basicTrieRoot);
+            return;
+        }
+
+        //fill buffer
+        tries[currByte] = basicTrieRoot;
+
+        //fill trie
+        for (int i = 0; i <= currByte; i++){
+            if (currByte < MAXDEPTH -1 || i > 0){
+                if (tries[i]->children[c] == NULL)
+                    tries[i] = tries[i]->children[c] = trie_init();
+                else
+                    tries[i] = tries[i]->children[c];
+                tries[i]->amount++;
+            }else{
+                tries[i]->leafAmount[c]++;
+            }
+        }
+    }
+
+    //read rest of bytes
+    do{
+        //read byte
+        c = fgetc(in);
+
+        //exit if end
+        if (c == EOF)
+            break;
+
+        //fill buffer
+        tries[currByte % MAXDEPTH] = basicTrieRoot;
+
+        //fill trie
+        for (int j = 1; j <= MAXDEPTH; j++){
+            if (j > 1){
+                if (tries[(currByte + j) % MAXDEPTH]->children[c] == NULL)
+                    tries[(currByte + j) % MAXDEPTH] = tries[(currByte + j) % MAXDEPTH]->children[c] = trie_init();
+                else
+                    tries[(currByte + j) % MAXDEPTH] = tries[(currByte + j) % MAXDEPTH]->children[c];
+                tries[(currByte + j) % MAXDEPTH]->amount++;
+            }else{
+                tries[(currByte + j) % MAXDEPTH]->leafAmount[c]++;
+            }
+        }
+    }while (currByte++);
+
+    //printf("Basic Trie:\n");
+    //rec_print(basicTrieRoot);
+
+    //redduce trie
+    trie * reducedTrieRoot = trie_init();
+
+    reduce(reducedTrieRoot, basicTrieRoot);
+
+    //printf("\n\n\n");
+    //printf("Reduced Trie:\n");
+    //rec_print(reducedTrieRoot);
+
+    char word[MAXDEPTH+1] = {'\0'};
+    int wordLen = 0;
+
+
+    while (1){
+        wordLen = search_best(reducedTrieRoot, word, 1);
+        if (wordLen == 0)
+            break;
+        printf("Best substr:{%s}\n", word);
+
+        remove_word(reducedTrieRoot, word, wordLen);
+        
+        //printf("Trie with removed substr:\n");
+        //rec_print(reducedTrieRoot);
+    }
+
+    trie_free(reducedTrieRoot);
+    trie_free(basicTrieRoot);
+}
+
+void dict_decomp(char * source, char * dest){
+
+}
+
+*/
+
 
 typedef struct{
     int count;
@@ -17,7 +309,7 @@ typedef struct{
     char * original;
 }dictEntry;
 
-#define BANNED " \n\t{}[]()<=>+-*/%;:.,\"\'\\&!^~|?"
+#define BANNED " \n\t{}[]()<=>+-/*%;:.,\"\'\\&!^~|?"
 
 int isBanned(unsigned char c){
     if(c < 32 || c >= 127)

@@ -250,7 +250,6 @@ int main(int len, char ** arr){
     int fileIndx = 2;
 
 
-
     if (len > 1){
         if(!strcmp(arr[1], "-all"))
             alg = -1;
