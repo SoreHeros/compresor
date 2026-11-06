@@ -5,8 +5,6 @@
 #ifndef COMPRESOR_SLIDING_WINDOW_H
 #define COMPRESOR_SLIDING_WINDOW_H
 
-#include <stdio.h>
-
 void sw_compress(char * in, char * out);
 void sw_decompress(char * in, char * out);
 

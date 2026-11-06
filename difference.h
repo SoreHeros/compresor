@@ -5,8 +5,6 @@
 #ifndef COMPRESOR_DIFFERENCE_H
 #define COMPRESOR_DIFFERENCE_H
 
-#include <stdio.h>
-
 void difference_comp(char * source, char * dest);
 void difference_decomp(char * source, char * dest);
 

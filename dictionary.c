@@ -5,10 +5,9 @@
 #include "dictionary.h"
 
 #include <ctype.h>
-#include <iso646.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <wchar.h>
 
 #include "lists.h"

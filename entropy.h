@@ -5,8 +5,6 @@
 #ifndef COMPRESOR_ENTROPY_H
 #define COMPRESOR_ENTROPY_H
 
-#include <stdio.h>
-
 double measure_entropy(char * fileName);
 
 #endif //COMPRESOR_ENTROPY_H

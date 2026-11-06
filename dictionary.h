@@ -5,8 +5,6 @@
 #ifndef DICTIONARY_H
 #define DICTIONARY_H
 
-#include <stdio.h>
-
 void dict_comp(char * source, char * dest);
 void dict_decomp(char * in, char * out);
 

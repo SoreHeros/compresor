@@ -4,6 +4,7 @@
 
 #include "entropy.h"
 #include <math.h>
+#include <stdio.h>
 
 #define BUFFSIZ 0x10000
 

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "continuous_huffman.h"
 #include "dictionary.h"
 #include "difference.h"
 #include "entropy.h"
@@ -14,6 +15,7 @@
 #include "lists.h"
 #include "sliding_window.h"
 #include "entropy.h"
+#include "continuous_huffman.h"
 
 #define BUFFSIZ 0x10000
 
@@ -26,6 +28,7 @@ struct{
         {"dictionary", ".dict", dict_comp, dict_decomp},
         {"huffman", ".hfmn", huffman_comp, huffman_decomp},
         {"sliding window", ".slwd", sw_compress, sw_decompress},
+        {"cont. huffman", ".chfm", continuous_huffman_comp, continuous_huffman_decomp},
         //{"difference", ".diff", difference_comp, difference_decomp}
     };
 

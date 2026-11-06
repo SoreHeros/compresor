@@ -3,6 +3,7 @@
 //
 
 #include "difference.h"
+#include <stdio.h>
 
 #define BUFFSIZ 0x10000
 
