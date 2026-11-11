@@ -51,18 +51,20 @@ int are_equal(char * filename1, char * filename2){
     }
 
     size_t read1, read2;
+    int bufferswaps = 0;
     do{
         read1 = fread(buff1, 1, BUFFSIZ, f1);
         read2 = fread(buff2, 1, BUFFSIZ, f2);
         for (size_t i = 0; i < read1 && i < read2; i++){
             if (buff1[i] != buff2[i]){
                 //files are not equal
-                printf("ERROR AT CHARACTER %li f1:%c(%i) f2:%c(%i)\n", ftell(f1) - BUFFSIZ + i, buff1[i], buff1[i], buff2[i], buff2[i]);
+                printf("ERROR AT CHARACTER %li f1:%c(%i) f2:%c(%i)\n", bufferswaps *  BUFFSIZ + i, buff1[i], buff1[i], buff2[i], buff2[i]);
                 fclose(f1);
                 fclose(f2);
                 return 0;
             }
         }
+        bufferswaps++;
     }while (read1 == BUFFSIZ && read2 == BUFFSIZ);
 
     if (read1 != read2){

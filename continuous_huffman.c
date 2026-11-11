@@ -3,145 +3,249 @@
 //
 
 //an alternative implementation of huffman that builds the tree as it goes
-
-#include "continuous_huffman.h"
+#include <stdlib.h>
 #include <stdio.h>
+#include "continuous_huffman.h"
 
-#define NULLREF -1
-#define HUFFTREESIZE (256 * 2 - 1)
+#define COUNTBIAS 0x100
+#define MEMORY 0x1000
 
 typedef struct{
-    size_t count;
-    short int parent, isRight, child[2];
-}huffTreeEntry;
+    size_t bits;
+    int bitsLen;
+}bitRepl;
 
-void init_hufftree(huffTreeEntry tree[HUFFTREESIZE]){
-    int i = 0;
+bitRepl tree_search(size_t totalCount, size_t countBuff[256], unsigned char goal){
+    bitRepl ret = {0};
+    int placing = 0;
+    int slots = 1;
 
-    //leaf nodes
-    do{
-        tree[i].child[0] = NULLREF;
-        tree[i].child[1] = NULLREF;
-        tree[i].count = 0;
-        //tree[i].count = 1;
-        tree[i].parent = 256 + i / 2;
-        tree[i].isRight = i % 2;
-    }while (++i < 256);
-
-    //regular nodes
-    do{
-        tree[i].child[0] = 2 * (i - 256);
-        tree[i].child[1] = 2 * (i - 256) + 1;
-        tree[i].count = 0;
-        //tree[i].count = tree[tree[i].child[0]].count + tree[tree[i].child[1]].count;
-        tree[i].parent = 256 + i / 2;
-        tree[i].isRight = i % 2;
-    }while (++i < HUFFTREESIZE);
-
-    //root node
-    tree[HUFFTREESIZE - 1].parent = NULLREF;
-}
-
-void swap(huffTreeEntry tree[HUFFTREESIZE], int a, int b){
-    //aux for swaps
-    huffTreeEntry aux = tree[a];
-    huffTreeEntry bux = tree[b];
-
-    //swap child refs
-    tree[aux.parent].child[aux.isRight] = b;
-    tree[bux.parent].child[bux.isRight] = a;
-
-    //swap parent refs
-    tree[a].parent = bux.parent;
-    tree[b].parent = aux.parent;
-
-    //swaps isRights
-    tree[a].isRight = bux.isRight;
-    tree[b].isRight = aux.isRight;
-}
-
-void add_hufftree(huffTreeEntry tree[HUFFTREESIZE], int c){
-    tree[c].count++;
-
-    //climb as high as possible untill root
-    while (tree[tree[c].parent].parent != NULLREF){
-        int parent = tree[c].parent;
-        int uncle = tree[tree[parent].parent].child[!tree[parent].isRight];
-        if (tree[c].count > tree[uncle].count){
-            //swap if is bigger than parent's brother
-            swap(tree, c, uncle);
+    while (1){
+        if (countBuff[placing] * (slots * 2 - 1) < totalCount){
+            //unoptimal so it goes to the next row
+            slots *= 2;
+            ret.bitsLen++;
+            ret.bits <<= 1;
         }else{
-            //else switch to parent
-            c = tree[c].parent;
-            tree[c].count++;
+            //optimal placement
+            slots--;
+            if (placing == goal)
+                return ret;
+            ret.bits++;
+            totalCount -= countBuff[placing];
+            placing++;
         }
     }
-
-    //add to root
-    tree[HUFFTREESIZE-1].count++;
 }
 
+void add_to_buffs(size_t * totalCount, size_t countBuff[256], unsigned char charBuff[256],  unsigned char indexBuff[256], int c){
+    int index = indexBuff[c];
+    int newIndex = index;
+    size_t count = countBuff[index];
 
-//todo add sub_hufftree y buffer
+    //newIndex will be leftmost element of the block
+    do
+        newIndex--;
+    while (newIndex >= 0 && countBuff[newIndex] == count);
+    newIndex++;
+
+    //swap newIndex with old index (if necessary)
+    if (newIndex != index){
+        //Not necesary since counts must bee the same before swap
+        //countBuff[index] = countBuff[newIndex];
+
+        unsigned char aux = charBuff[index] = charBuff[newIndex];
+        charBuff[newIndex] = c;
+
+        indexBuff[c] = newIndex;
+        indexBuff[aux] = index;
+    }
+
+    //add COUNTBIAS
+    countBuff[newIndex] += COUNTBIAS;
+    *totalCount += COUNTBIAS;
+}
+
+void sub_to_buffs(size_t * totalCount, size_t countBuff[256], unsigned char charBuff[256],  unsigned char indexBuff[256], int c){
+    int index = indexBuff[c];
+    int newIndex = index;
+    size_t count = countBuff[index];
+
+    //newIndex will be rightmost element of the block
+    do
+        newIndex++;
+    while (newIndex < 256 && countBuff[newIndex] == count);
+    newIndex--;
+
+    //swap newIndex with old index (if necessary)
+    if (newIndex != index){
+        //Not necesary since counts must bee the same before swap
+        //countBuff[index] = countBuff[newIndex];
+
+        unsigned char aux = charBuff[index] = charBuff[newIndex];
+        charBuff[newIndex] = c;
+
+        indexBuff[c] = newIndex;
+        indexBuff[aux] = index;
+    }
+
+    //subtract COUNTBIAS
+    countBuff[newIndex] -= COUNTBIAS;
+    *totalCount -= COUNTBIAS;
+}
+
 void continuous_huffman_comp(char * source, char * dest){
     FILE * in = fopen(source, "rb"), * out = fopen(dest, "wb");
 
-    //return if file is empty
-    fseek(in, 0, SEEK_END);
-    size_t fileSize;
-    if ((fileSize = ftell(in)) == 0){
-        fclose(in);
-        fclose(out);
-        return;
+    //init buffers
+    size_t totalCount = 256;//total amount of counts
+    size_t countBuff[256];//the count for each char ordered from most to least
+    unsigned char charBuff[256];//the corresponding char for each count
+    unsigned char indexBuff[256];//the corresponding index for each char
+
+    for (int i = 0; i < 256; i++){
+        countBuff[i] = 1;
+        charBuff[i] = indexBuff[i] = i;
     }
-    fseek(in, 0, SEEK_SET);
 
-    //init hufftree
-    huffTreeEntry tree[HUFFTREESIZE];
-    init_hufftree(tree);
+    int c = fgetc(in);
+    unsigned char byte = 0;
+    int bit = 0;
+    size_t read = 1;
+    unsigned char buffer[MEMORY];
+    buffer[0] = c;
 
-    //print bytes
-    fprintf(out, "%lu", fileSize);
-
-    //init stack
-    char stack[256];
-    int stackTop = 0;
-    int byte = 0;
-    int bit = 8;
-
-    //compress and build tree as it goes
-    int c = fgetc(in);;
     while (c != EOF){
-        int aux = c;
-        while (tree[aux].parent != NULLREF){
-            stack[stackTop++] =  tree[aux].isRight;
-            aux = tree[aux].parent;
-        }
+        bitRepl p = tree_search(totalCount, countBuff, indexBuff[c]);
 
-        //pack and print reverse bits
-        while (stackTop > 0){
-            byte |= stack[--stackTop] << --bit;
-            if (!bit){
-                fputc(byte, out);
-                bit = 8;
-                byte = 0;
-            }
-        }
+        add_to_buffs(&totalCount, countBuff, charBuff, indexBuff, c);
 
-        add_hufftree(tree, c);
-        c = fgetc(in);
+        while (bit + p.bitsLen >= 8){
+            byte |= p.bits >> (p.bitsLen - 8 + bit);
+            fputc(byte, out);
+            p.bitsLen -= 8 - bit;
+            byte = 0;
+            bit = 0;
+        }
+        //save rest
+        byte |= p.bits << (8 - p.bitsLen) >> bit;
+        bit += p.bitsLen;
+
+        if (read >= MEMORY)
+            sub_to_buffs(&totalCount, countBuff, charBuff, indexBuff, buffer[read % MEMORY]);
+
+        buffer[read++ % MEMORY] = c = fgetc(in);
     }
 
-    //print last byte
-    if (bit != 8)
-        fputc(byte, out);
+    //print last byte (rellenar con 1 para marcar fin de archivo)
+    if (bit)
+        fputc(byte | (0xff >> bit), out);
 
     fclose(in);
     fclose(out);
 }
 
-void continuous_huffman_decomp(char * source, char * dest){
-    huffTreeEntry tree[256 * 2 - 1];
+typedef struct{
+    unsigned char c;
+    int bitsLen;
+}charRepl;
 
-    init_hufftree(tree);
+charRepl rev_tree_search(size_t totalCount, size_t countBuff[256], unsigned char charBuff[256], size_t goal){
+    bitRepl aux = {0};
+    int placing = 0;
+    int slots = 1;
+
+    while (1){
+        if (countBuff[placing] * (slots * 2 - 1) < totalCount){
+            //unoptimal so it goes to the next row
+            slots *= 2;
+            aux.bitsLen++;
+            aux.bits <<= 1;
+        }else{
+            //optimal placement
+            slots--;
+            if (aux.bits == (goal >> (64 - aux.bitsLen))){
+                charRepl ret;
+                ret.c = charBuff[placing];
+                ret.bitsLen = aux.bitsLen;
+                return ret;
+            }
+            aux.bits++;
+            totalCount -= countBuff[placing];
+            placing++;
+        }
+    }
+}
+
+void continuous_huffman_decomp(char * source, char * dest){
+    FILE * in = fopen(source, "rb"), * out = fopen(dest, "wb");
+
+    //init buffers
+    size_t totalCount = 256;//total amount of counts
+    size_t countBuff[256];//the count for each char ordered from most to least
+    unsigned char charBuff[256];//the corresponding char for each count
+    unsigned char indexBuff[256];//the corresponding index for each char
+
+    for (int i = 0; i < 256; i++){
+        countBuff[i] = 1;
+        charBuff[i] = indexBuff[i] = i;
+    }
+
+    int c = fgetc(in);
+    size_t bytes = 0;
+    int bit = 64;
+    size_t read = 0;
+    unsigned char buffer[MEMORY];
+
+    while (c != EOF){
+        if (bit >= 8){
+            bytes |= (size_t)c << (bit - 8);
+            bit -= 8;
+            c = fgetc(in);
+        }else{
+            bytes |= c >> (8 - bit); // siempre llenar el fondo
+
+            charRepl r = rev_tree_search(totalCount, countBuff, charBuff, bytes);
+
+            add_to_buffs(&totalCount, countBuff, charBuff, indexBuff, r.c);
+
+            //print char
+            fputc(r.c, out);
+
+            buffer[read++ % MEMORY] = r.c;
+
+            if (read >= MEMORY)
+                sub_to_buffs(&totalCount, countBuff, charBuff, indexBuff, buffer[read % MEMORY]);
+
+            //remove from bytes
+            bytes <<= r.bitsLen;
+            bit += r.bitsLen;
+        }
+    }
+
+    //print last chars
+    while (1){
+        //bytes |= 0xffffffffffffffff >> (64 - bit); // siempre llenar el fondo
+
+        charRepl r = rev_tree_search(totalCount, countBuff, charBuff, bytes);
+
+        add_to_buffs(&totalCount, countBuff, charBuff, indexBuff, r.c);
+
+        //test if it is final else print char
+        if (r.bitsLen > 64 - bit)
+            break;
+        fputc(r.c, out);
+
+        buffer[read++ % MEMORY] = r.c;
+
+        if (read >= MEMORY)
+            sub_to_buffs(&totalCount, countBuff, charBuff, indexBuff, buffer[read % MEMORY]);
+
+        //remove from bytes
+        bytes <<= r.bitsLen;
+        bit += r.bitsLen;
+    }
+
+    fclose(in);
+    fclose(out);
 }
