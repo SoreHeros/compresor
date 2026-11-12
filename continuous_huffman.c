@@ -225,7 +225,7 @@ void continuous_huffman_decomp(char * source, char * dest){
 
     //print last chars
     while (1){
-        //bytes |= 0xffffffffffffffff >> (64 - bit); // siempre llenar el fondo
+        bytes |= 18446744073709551615 >> (64 - bit); // siempre llenar el fondo tiene que ser ese número raro porque si no lo interpreta como un número negativo
 
         charRepl r = rev_tree_search(totalCount, countBuff, charBuff, bytes);
 

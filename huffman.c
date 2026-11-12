@@ -203,13 +203,14 @@ void huffman_comp(char * source, char * dest){
     }while (read == BUFFSIZ);
 
     //return if file is empty
-    if (ftell(in) == 0){
+    size_t size = ftell(in);
+    if (size == 0){
         fclose(in);
         fclose(out);
         return;
     }
 
-    size_t size = ftell(in);
+
 
     rewind(in);
 
